@@ -1,6 +1,8 @@
 require 'rubygems'
 require 'bud'
 
+# Reliable broadcast with a single sender and a static set of receivers. Note
+# that we don't tolerate sender failure.
 class MultiRecvStatic
   include Bud
 
@@ -28,8 +30,8 @@ class MultiRecvStatic
 end
 
 rlist = Array.new(2) { MultiRecvStatic.new }
-rlist.each {|r| r.run_bg}
-r_addrs = rlist.map {|r| r.ip_port}
+rlist.each(&:run_bg)
+r_addrs = rlist.map(&:ip_port)
 
 s = MultiRecvStatic.new(r_addrs)
 s.run_bg
@@ -41,4 +43,4 @@ s.sync_do {
 sleep 3
 
 s.stop
-rlist.each {|r| r.stop}
+rlist.each(&:stop)
