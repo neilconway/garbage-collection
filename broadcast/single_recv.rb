@@ -17,12 +17,11 @@ class SingleRecv
   end
 end
 
-s = SingleRecv.new
-s.run_bg
-
 r = SingleRecv.new
 r.run_bg
 
+s = SingleRecv.new
+s.run_bg
 s.sync_do {
   s.sbuf <+ [[1, r.ip_port, 'foo'],
              [2, r.ip_port, 'bar']]
