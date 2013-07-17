@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'bud'
 
-class SingleRecv
+class Unicast
   include Bud
 
   state do
@@ -17,10 +17,10 @@ class SingleRecv
   end
 end
 
-r = SingleRecv.new
+r = Unicast.new
 r.run_bg
 
-s = SingleRecv.new
+s = Unicast.new
 s.run_bg
 s.sync_do {
   s.sbuf <+ [[1, r.ip_port, 'foo'],

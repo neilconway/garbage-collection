@@ -1,9 +1,9 @@
 require 'rubygems'
 require 'bud'
 
-# Reliable broadcast with a single sender and a static set of receivers. Note
+# Reliable broadcast with a single sender and a fixed set of receivers. Note
 # that we don't tolerate sender failure.
-class MultiRecvStatic
+class BroadcastFixed
   include Bud
 
   def initialize(addrs=[])
@@ -29,11 +29,11 @@ class MultiRecvStatic
   end
 end
 
-rlist = Array.new(2) { MultiRecvStatic.new }
+rlist = Array.new(2) { BroadcastFixed.new }
 rlist.each(&:run_bg)
 r_addrs = rlist.map(&:ip_port)
 
-s = MultiRecvStatic.new(r_addrs)
+s = BroadcastFixed.new(r_addrs)
 s.run_bg
 s.sync_do {
   s.sbuf <+ [[1, 'foo'],

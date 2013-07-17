@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'bud'
 
-class SingleRecvRewrite
+class UnicastRewrite
   include Bud
 
   state do
@@ -24,10 +24,10 @@ class SingleRecvRewrite
   end
 end
 
-r = SingleRecvRewrite.new
+r = UnicastRewrite.new
 r.run_bg
 
-s = SingleRecvRewrite.new
+s = UnicastRewrite.new
 s.run_bg
 s.sync_do {
   s.sbuf <+ [[1, r.ip_port, 'foo'],

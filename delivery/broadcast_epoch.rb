@@ -12,7 +12,7 @@ require 'bud'
 # don't try to reclaim node information for prior epochs.
 #
 # Note that we don't tolerate sender failure.
-class MultiRecvEpoch
+class BroadcastEpoch
   include Bud
 
   state do
@@ -29,11 +29,11 @@ class MultiRecvEpoch
   end
 end
 
-rlist = Array.new(2) { MultiRecvEpoch.new }
+rlist = Array.new(2) { BroadcastEpoch.new }
 rlist.each(&:run_bg)
 r_addrs = rlist.map(&:ip_port)
 
-s = MultiRecvEpoch.new
+s = BroadcastEpoch.new
 s.run_bg
 s.sync_do {
   s.node <+ [["first", r_addrs.first]]
