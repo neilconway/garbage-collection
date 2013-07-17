@@ -5,22 +5,21 @@ class UnicastRewrite
   include Bud
 
   state do
-    table :sbuf, [:id] => [:addr, :val]
-    scratch :sbuf_to_send, sbuf.schema
-    table :rbuf, [:id] => [:addr, :val, :sender]
+    table :sbuf, [:id] => [:addr, :val, :sender]
+    table :rbuf, sbuf.schema
     table :rbuf_approx, rbuf.schema
     channel :chn, [:id] => [:@addr, :val, :sender]
-    channel :ack_chn, [:id] => [:@addr, :val, :sender]
+    channel :ack_chn, [:id] => [:addr, :val, :@sender]
   end
 
   bloom do
-    sbuf_to_send <= sbuf.notin(rbuf_approx)
-    chn <~ sbuf_to_send {|s| s.to_a + [ip_port]}
+    chn   <~ sbuf.notin(rbuf_approx)
     rbuf  <= chn
-    stdio <~ chn.inspected
+    stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
 
-    ack_chn <~ chn {|c| [c.id, c.sender, c.val, c.addr]}
-    rbuf_approx <= ack_chn {|a| [a.id, a.sender, a.val]}
+    ack_chn <~ chn
+    rbuf_approx <= ack_chn
+    stdio <~ ack_chn {|c| ["Got ack: #{c.inspect}"]}
   end
 end
 
@@ -30,8 +29,8 @@ r.run_bg
 s = UnicastRewrite.new
 s.run_bg
 s.sync_do {
-  s.sbuf <+ [[1, r.ip_port, 'foo'],
-             [2, r.ip_port, 'bar']]
+  s.sbuf <+ [[1, r.ip_port, 'foo', s.ip_port],
+             [2, r.ip_port, 'bar', s.ip_port]]
 }
 
 sleep 3

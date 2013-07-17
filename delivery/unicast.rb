@@ -5,9 +5,9 @@ class Unicast
   include Bud
 
   state do
-    table :sbuf, [:id] => [:addr, :val]
+    table :sbuf, [:id] => [:addr, :val, :sender]
     table :rbuf, sbuf.schema
-    channel :chn, [:id] => [:@addr, :val]
+    channel :chn, [:id] => [:@addr, :val, :sender]
   end
 
   bloom do
@@ -23,8 +23,8 @@ r.run_bg
 s = Unicast.new
 s.run_bg
 s.sync_do {
-  s.sbuf <+ [[1, r.ip_port, 'foo'],
-             [2, r.ip_port, 'bar']]
+  s.sbuf <+ [[1, r.ip_port, 'foo', s.ip_port],
+             [2, r.ip_port, 'bar', s.ip_port]]
 }
 
 sleep 3
