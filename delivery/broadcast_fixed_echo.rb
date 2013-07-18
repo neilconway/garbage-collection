@@ -28,7 +28,8 @@ class BroadcastFixedEcho
     chn   <~ (sbuf * node).pairs {|m,n| [m.id, n.addr, m.val]}
     sbuf  <= chn {|c| [c.id, c.val]}
     rbuf  <= chn
-    stdio <~ chn.inspected
+
+    stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
   end
 end
 

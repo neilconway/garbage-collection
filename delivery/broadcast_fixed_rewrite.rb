@@ -3,7 +3,7 @@ require 'bud'
 
 # Reliable broadcast with a single sender and a fixed set of receivers. Note
 # that we don't tolerate sender failure.
-class BroadcastFixed
+class BroadcastFixedRewrite
   include Bud
 
   def initialize(addrs=[])
@@ -20,23 +20,28 @@ class BroadcastFixed
     table :sbuf, [:id] => [:val, :sender]
     scratch :sbuf_out, [:id, :addr] => [:val, :sender]
     table :rbuf, sbuf_out.schema
+    table :rbuf_approx, rbuf.schema
     channel :chn, [:id, :@addr] => [:val, :sender]
+    channel :ack_chn, chn.channel_schema
   end
 
   bloom do
     sbuf_out <= (sbuf * node).pairs {|m,n| [m.id, n.addr, m.val, m.sender]}
-    chn   <~ sbuf_out
-    rbuf  <= chn
+    chn  <~ sbuf_out.notin(rbuf_approx)
+    rbuf <= chn
+
+    ack_chn <~ chn
+    rbuf_approx <= ack_chn
 
     stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
   end
 end
 
-rlist = Array.new(2) { BroadcastFixed.new }
+rlist = Array.new(2) { BroadcastFixedRewrite.new }
 rlist.each(&:run_bg)
 r_addrs = rlist.map(&:ip_port)
 
-s = BroadcastFixed.new(r_addrs)
+s = BroadcastFixedRewrite.new(r_addrs)
 s.run_bg
 s.sync_do {
   s.sbuf <+ [[1, 'foo', s.ip_port],

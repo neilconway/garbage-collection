@@ -13,7 +13,8 @@ class Unicast
   bloom do
     chn   <~ sbuf
     rbuf  <= chn
-    stdio <~ chn.inspected
+
+    stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
   end
 end
 

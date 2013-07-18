@@ -9,16 +9,17 @@ class UnicastRewrite
     table :rbuf, sbuf.schema
     table :rbuf_approx, rbuf.schema
     channel :chn, [:id] => [:@addr, :val, :sender]
-    channel :ack_chn, [:id] => [:addr, :val, :@sender]
+    channel :ack_chn, chn.channel_schema
   end
 
   bloom do
     chn   <~ sbuf.notin(rbuf_approx)
     rbuf  <= chn
-    stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
 
     ack_chn <~ chn
     rbuf_approx <= ack_chn
+
+    stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
     stdio <~ ack_chn {|c| ["Got ack: #{c.inspect}"]}
   end
 end
