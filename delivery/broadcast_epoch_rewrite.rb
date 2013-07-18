@@ -12,7 +12,7 @@ require 'bud'
 # don't try to reclaim node information for prior epochs.
 #
 # Note that we don't tolerate sender failure.
-class BroadcastEpoch
+class BroadcastEpochRewrite
   include Bud
 
   state do
@@ -21,22 +21,27 @@ class BroadcastEpoch
     channel :chn, [:id, :@addr] => [:epoch, :val, :sender]
     scratch :sbuf_out, chn.schema
     table :rbuf, chn.schema
+    table :rbuf_approx, rbuf.schema
+    channel :ack_chn, chn.channel_schema
   end
 
   bloom do
     sbuf_out <= (sbuf * node).pairs(:epoch => :epoch) {|m,n| [m.id, n.addr, m.epoch, m.val, m.sender]}
-    chn <~ sbuf_out
+    chn <~ sbuf_out.notin(rbuf_approx)
     rbuf <= chn
+
+    ack_chn <~ chn
+    rbuf_approx <= ack_chn
 
     stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
   end
 end
 
-rlist = Array.new(2) { BroadcastEpoch.new }
+rlist = Array.new(2) { BroadcastEpochRewrite.new }
 rlist.each(&:run_bg)
 r_addrs = rlist.map(&:ip_port)
 
-s = BroadcastEpoch.new
+s = BroadcastEpochRewrite.new
 s.run_bg
 s.sync_do {
   s.node <+ [["first", r_addrs.first]]

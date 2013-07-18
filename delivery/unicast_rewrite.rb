@@ -5,11 +5,11 @@ class UnicastRewrite
   include Bud
 
   state do
-    table :sbuf, [:id] => [:addr, :val, :sender]
-    table :rbuf, sbuf.schema
-    table :rbuf_approx, rbuf.schema
     channel :chn, [:id] => [:@addr, :val, :sender]
-    channel :ack_chn, chn.channel_schema
+    table :sbuf, chn.schema
+    table :rbuf, chn.schema
+    table :rbuf_approx, rbuf.schema
+    channel :ack_chn, [:id] => [:addr, :val, :@sender]
   end
 
   bloom do

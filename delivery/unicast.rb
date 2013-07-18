@@ -5,9 +5,9 @@ class Unicast
   include Bud
 
   state do
-    table :sbuf, [:id] => [:addr, :val, :sender]
-    table :rbuf, sbuf.schema
     channel :chn, [:id] => [:@addr, :val, :sender]
+    table :sbuf, chn.schema
+    table :rbuf, chn.schema
   end
 
   bloom do

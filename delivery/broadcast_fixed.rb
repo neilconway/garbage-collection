@@ -18,9 +18,10 @@ class BroadcastFixed
   state do
     table :node, [:addr]        # XXX: s/table/immutable/
     table :sbuf, [:id] => [:val, :sender]
-    scratch :sbuf_out, [:id, :addr] => [:val, :sender]
-    table :rbuf, sbuf_out.schema
     channel :chn, [:id, :@addr] => [:val, :sender]
+    scratch :sbuf_out, chn.schema
+    table :rbuf, chn.schema
+    periodic :tik, 0.5
   end
 
   bloom do

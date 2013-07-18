@@ -18,11 +18,12 @@ class BroadcastFixedRewrite
   state do
     table :node, [:addr]        # XXX: s/table/immutable/
     table :sbuf, [:id] => [:val, :sender]
-    scratch :sbuf_out, [:id, :addr] => [:val, :sender]
-    table :rbuf, sbuf_out.schema
-    table :rbuf_approx, rbuf.schema
     channel :chn, [:id, :@addr] => [:val, :sender]
-    channel :ack_chn, chn.channel_schema
+    scratch :sbuf_out, chn.schema
+    table :rbuf, chn.schema
+    table :rbuf_approx, rbuf.schema
+    channel :ack_chn, [:id, :addr] => [:val, :@sender]
+    periodic :tik, 0.5
   end
 
   bloom do
@@ -34,6 +35,7 @@ class BroadcastFixedRewrite
     rbuf_approx <= ack_chn
 
     stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
+    stdio <~ ack_chn {|c| ["Got ack: #{c.inspect}"]}
   end
 end
 
