@@ -6,7 +6,7 @@ require 'bud'
 # message, it rebroadcasts the message to all other nodes. This ensures that we
 # can tolerate the failure of nodes that have partially completed message
 # sends. We assume that all nodes configured with the same set of values in
-# "node".
+# "node". We also assume that message IDs are globally unique.
 class BroadcastAll
   include Bud
 
