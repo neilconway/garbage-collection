@@ -29,7 +29,7 @@ class BroadcastFixed
     chn   <~ sbuf_out
     rbuf  <= chn
 
-    stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
+    stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
 end
 

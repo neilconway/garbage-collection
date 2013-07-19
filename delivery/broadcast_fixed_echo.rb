@@ -19,17 +19,17 @@ class BroadcastFixedEcho
 
   state do
     table :node, [:addr]        # XXX: s/table/immutable/
-    table :sbuf, [:id] => [:val]
-    table :rbuf, [:id] => [:addr, :val]
-    channel :chn, [:id, :@addr] => [:val]
+    table :sbuf, [:id] => [:val, :sender]
+    channel :chn, [:id, :@addr] => [:val, :sender]
+    table :rbuf, chn.schema
   end
 
   bloom do
-    chn   <~ (sbuf * node).pairs {|m,n| [m.id, n.addr, m.val]}
-    sbuf  <= chn {|c| [c.id, c.val]}
+    chn   <~ (sbuf * node).pairs {|m,n| [m.id, n.addr, m.val, m.sender]}
+    sbuf  <= chn {|c| [c.id, c.val, c.sender]}
     rbuf  <= chn
 
-    stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
+    stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
 end
 
@@ -44,8 +44,8 @@ rlist.each(&:run_bg)
 s = BroadcastFixedEcho.new([addrs.first])
 s.run_bg
 s.sync_do {
-  s.sbuf <+ [[1, 'foo'],
-             [2, 'bar']]
+  s.sbuf <+ [[1, 'foo', s.ip_port],
+             [2, 'bar', s.ip_port]]
 }
 
 sleep 3

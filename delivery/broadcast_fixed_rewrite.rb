@@ -34,7 +34,7 @@ class BroadcastFixedRewrite
     ack_chn <~ chn
     rbuf_approx <= ack_chn
 
-    stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
+    stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
     stdio <~ ack_chn {|c| ["Got ack: #{c.inspect}"]}
   end
 end

@@ -22,7 +22,7 @@ class BroadcastEpochRewrite
     scratch :sbuf_out, chn.schema
     table :rbuf, chn.schema
     table :rbuf_approx, rbuf.schema
-    channel :ack_chn, chn.channel_schema
+    channel :ack_chn, [:id, :addr] => [:epoch, :val, :@sender]
   end
 
   bloom do
@@ -33,7 +33,8 @@ class BroadcastEpochRewrite
     ack_chn <~ chn
     rbuf_approx <= ack_chn
 
-    stdio <~ chn {|c| ["Sending: #{c.inspect}"]}
+    stdio <~ ack_chn {|c| ["Got ack: #{c.inspect}"]}
+    stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
 end
 
@@ -44,10 +45,10 @@ r_addrs = rlist.map(&:ip_port)
 s = BroadcastEpochRewrite.new
 s.run_bg
 s.sync_do {
-  s.node <+ [["first", r_addrs.first]]
-  s.node <+ r_addrs.map {|a| ["second", a]}
-  s.sbuf <+ [[1, "first", 'foo'],
-             [2, "second", 'bar']]
+  s.node <+ [[r_addrs.first, "first"]]
+  s.node <+ r_addrs.map {|a| [a, "second"]}
+  s.sbuf <+ [[1, "first", 'foo', s.ip_port],
+             [2, "second", 'bar', s.ip_port]]
 }
 
 sleep 3
