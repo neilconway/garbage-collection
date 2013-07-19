@@ -1,11 +1,13 @@
 require 'rubygems'
 require 'bud'
 
-# Reliable broadcast with a single sender and a fixed set of receivers. In order
-# to tolerate sender failure, each receiver echoes every message it observes to
-# every receiver. We assume that all the receivers are configured with the same
-# set of values in "node".
-class BroadcastFixedEcho
+# Reliable broadcast with a fixed set of nodes that act as both senders and
+# receivers. That is, any node can send a message; when a node receives a
+# message, it rebroadcasts the message to all other nodes. This ensures that we
+# can tolerate the failure of nodes that have partially completed message
+# sends. We assume that all nodes configured with the same set of values in
+# "node".
+class BroadcastAll
   include Bud
 
   def initialize(addrs, opts={})
@@ -36,12 +38,12 @@ end
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "localhost:#{p}"}
 
-rlist = ports.map {|p| BroadcastFixedEcho.new(addrs, :ip => "localhost", :port => p)}
+rlist = ports.map {|p| BroadcastAll.new(addrs, :ip => "localhost", :port => p)}
 rlist.each(&:run_bg)
 
 # NB: as a hack to test that we tolerate sender failures, have the original
 # sender only send to one of the receivers.
-s = BroadcastFixedEcho.new([addrs.first])
+s = BroadcastAll.new([addrs.first])
 s.run_bg
 s.sync_do {
   s.sbuf <+ [[1, 'foo', s.ip_port],
