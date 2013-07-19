@@ -23,7 +23,6 @@ class BroadcastFixedRewrite
     table :rbuf, chn.schema
     table :rbuf_approx, rbuf.schema
     channel :ack_chn, [:id, :addr] => [:val, :@sender]
-    periodic :tik, 0.5
   end
 
   bloom do

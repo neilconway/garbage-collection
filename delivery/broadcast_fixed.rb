@@ -21,7 +21,6 @@ class BroadcastFixed
     channel :chn, [:id, :@addr] => [:val, :sender]
     scratch :sbuf_out, chn.schema
     table :rbuf, chn.schema
-    periodic :tik, 0.5
   end
 
   bloom do
