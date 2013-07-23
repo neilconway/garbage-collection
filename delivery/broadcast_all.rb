@@ -37,7 +37,6 @@ end
 
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "localhost:#{p}"}
-
 rlist = ports.map {|p| BroadcastAll.new(addrs, :ip => "localhost", :port => p)}
 rlist.each(&:run_bg)
 
