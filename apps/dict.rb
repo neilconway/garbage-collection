@@ -22,9 +22,10 @@ DELETE_OP = 2
 #
 # Differences from Wuu & Bernstein:
 # (1) We don't assume that messages from A -> B are delivered in-order
-# (2) We don't explicitly depend on stamping messages with the sender's clock
-# (3) (Possible) we might communicate common knowledge (what W&B call "2DTT") in
-#     a different manner
+# (2) We don't explicitly depend on stamping messages with the sender's clock;
+#     i.e., we just assume that each message has a unique ID
+# (3) (Possible) we might exchange common knowledge (what W&B call "2DTT") in a
+#     different manner
 #
 # TODO:
 # * how to handle/prevent/allow concurrent insertions of the same key?

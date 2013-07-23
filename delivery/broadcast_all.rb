@@ -23,13 +23,11 @@ class BroadcastAll
     table :node, [:addr]        # XXX: s/table/immutable/
     table :sbuf, [:id] => [:val, :sender]
     channel :chn, [:id, :@addr] => [:val, :sender]
-    table :rbuf, chn.schema
   end
 
   bloom do
     chn   <~ (sbuf * node).pairs {|m,n| [m.id, n.addr, m.val, m.sender]}
     sbuf  <= chn {|c| [c.id, c.val, c.sender]}
-    rbuf  <= chn
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
