@@ -19,15 +19,13 @@ class BroadcastFixedRewrite
     table :node, [:addr]        # XXX: s/table/immutable/
     table :sbuf, [:id] => [:val, :sender]
     channel :chn, [:id, :@addr] => [:val, :sender]
-    scratch :sbuf_out, chn.schema
     table :rbuf, chn.schema
     table :rbuf_approx, rbuf.schema
     channel :ack_chn, [:id, :addr] => [:val, :@sender]
   end
 
   bloom do
-    sbuf_out <= (sbuf * node).pairs {|m,n| [m.id, n.addr, m.val, m.sender]}
-    chn  <~ sbuf_out.notin(rbuf_approx)
+    chn  <~ ((sbuf * node).pairs {|m,n| [m.id, n.addr, m.val, m.sender]}).notin(rbuf_approx)
     rbuf <= chn
 
     ack_chn <~ chn
@@ -49,7 +47,7 @@ s.sync_do {
              [2, 'bar', s.ip_port]]
 }
 
-sleep 3
+sleep 2
 
 s.stop
 rlist.each(&:stop)

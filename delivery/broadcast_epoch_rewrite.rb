@@ -19,15 +19,13 @@ class BroadcastEpochRewrite
     table :node, [:addr, :epoch]        # XXX: s/table/sealed-on-epoch/
     table :sbuf, [:id] => [:epoch, :val, :sender]
     channel :chn, [:id, :@addr] => [:epoch, :val, :sender]
-    scratch :sbuf_out, chn.schema
     table :rbuf, chn.schema
     table :rbuf_approx, rbuf.schema
     channel :ack_chn, [:id, :addr] => [:epoch, :val, :@sender]
   end
 
   bloom do
-    sbuf_out <= (sbuf * node).pairs(:epoch => :epoch) {|m,n| [m.id, n.addr, m.epoch, m.val, m.sender]}
-    chn <~ sbuf_out.notin(rbuf_approx)
+    chn <~ ((sbuf * node).pairs(:epoch => :epoch) {|m,n| [m.id, n.addr, m.epoch, m.val, m.sender]}).notin(rbuf_approx)
     rbuf <= chn
 
     ack_chn <~ chn
@@ -51,7 +49,7 @@ s.sync_do {
              [2, "second", 'bar', s.ip_port]]
 }
 
-sleep 3
+sleep 2
 
 s.stop
 rlist.each(&:stop)

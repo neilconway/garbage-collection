@@ -34,7 +34,7 @@ s.sync_do {
              [2, r.ip_port, 'bar', s.ip_port]]
 }
 
-sleep 3
+sleep 2
 
 s.stop
 r.stop

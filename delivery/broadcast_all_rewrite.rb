@@ -7,7 +7,7 @@ require 'bud'
 # can tolerate the failure of nodes that have partially completed message
 # sends. We assume that all nodes configured with the same set of values in
 # "node". We also assume that message IDs are globally unique.
-class BroadcastAll
+class BroadcastAllRewrite
   include Bud
 
   def initialize(addrs, opts={})
@@ -23,11 +23,14 @@ class BroadcastAll
     table :node, [:addr]        # XXX: s/table/immutable/
     table :sbuf, [:id] => [:val, :sender]
     channel :chn, [:id, :@addr] => [:val, :sender]
+    channel :ack_chn, [:id, :addr] => [:val, :@sender]
   end
 
   bloom do
     chn   <~ (sbuf * node).pairs {|m,n| [m.id, n.addr, m.val, m.sender]}
     sbuf  <= chn {|c| [c.id, c.val, c.sender]}
+
+    ack_chn <~ chn
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
@@ -35,12 +38,12 @@ end
 
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "localhost:#{p}"}
-rlist = ports.map {|p| BroadcastAll.new(addrs, :ip => "localhost", :port => p)}
+rlist = ports.map {|p| BroadcastAllRewrite.new(addrs, :ip => "localhost", :port => p)}
 rlist.each(&:run_bg)
 
 # NB: as a hack to test that we tolerate sender failures, have the original
 # sender only send to one of the receivers.
-s = BroadcastAll.new([addrs.first])
+s = BroadcastAllRewrite.new([addrs.first])
 s.run_bg
 s.sync_do {
   s.sbuf <+ [[1, 'foo', s.ip_port],

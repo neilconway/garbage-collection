@@ -19,13 +19,11 @@ class BroadcastEpoch
     table :node, [:addr, :epoch]        # XXX: s/table/sealed-on-epoch/
     table :sbuf, [:id] => [:epoch, :val, :sender]
     channel :chn, [:id, :@addr] => [:epoch, :val, :sender]
-    scratch :sbuf_out, chn.schema
     table :rbuf, chn.schema
   end
 
   bloom do
-    sbuf_out <= (sbuf * node).pairs(:epoch => :epoch) {|m,n| [m.id, n.addr, m.epoch, m.val, m.sender]}
-    chn <~ sbuf_out
+    chn <~ (sbuf * node).pairs(:epoch => :epoch) {|m,n| [m.id, n.addr, m.epoch, m.val, m.sender]}
     rbuf <= chn
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
@@ -45,7 +43,7 @@ s.sync_do {
              [2, "second", 'bar', s.ip_port]]
 }
 
-sleep 3
+sleep 2
 
 s.stop
 rlist.each(&:stop)
