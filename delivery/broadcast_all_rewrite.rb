@@ -6,7 +6,10 @@ require 'bud'
 # message, it rebroadcasts the message to all other nodes. This ensures that we
 # can tolerate the failure of nodes that have partially completed message
 # sends. We assume that all nodes configured with the same set of values in
-# "node". We also assume that message IDs are globally unique.
+# "node". To ensure that log entries are globally unique, they are identified
+# with a pair: <creator-addr, id> (note that "creator" is the node that
+# originated the log entry, which is often different from the node that sent a
+# message containing that entry.)
 class BroadcastAllRewrite
   include Bud
 
@@ -21,16 +24,18 @@ class BroadcastAllRewrite
 
   state do
     table :node, [:addr]        # XXX: s/table/immutable/
-    table :sbuf, [:id] => [:val, :sender]
-    channel :chn, [:id, :@addr] => [:val, :sender]
-    channel :ack_chn, [:id, :addr] => [:val, :@sender]
+    table :log, [:id, :creator] => [:val]
+    channel :chn, [:id, :creator, :@addr] => [:val]
+    table :chn_approx, chn.schema
+    channel :ack_chn, [:@sender, :id, :creator, :addr] => [:val]
   end
 
   bloom do
-    chn   <~ (sbuf * node).pairs {|m,n| [m.id, n.addr, m.val, m.sender]}
-    sbuf  <= chn {|c| [c.id, c.val, c.sender]}
+    chn <~ ((log * node).pairs {|m,n| [m.id, m.creator, n.addr, m.val]}).notin(chn_approx)
+    log <= chn {|c| [c.id, c.creator, c.val]}
 
-    ack_chn <~ chn
+    ack_chn <~ chn {|c| [remote_addr(c)] + c}
+    chn_approx <= ack_chn {|c| [c.id, c.creator, c.addr, c.val]}
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
@@ -46,8 +51,8 @@ rlist.each(&:run_bg)
 s = BroadcastAllRewrite.new([addrs.first])
 s.run_bg
 s.sync_do {
-  s.sbuf <+ [[1, 'foo', s.ip_port],
-             [2, 'bar', s.ip_port]]
+  s.sbuf <+ [[1, s.ip_port, 'foo'],
+             [2, s.ip_port, 'bar']]
 }
 
 sleep 2
