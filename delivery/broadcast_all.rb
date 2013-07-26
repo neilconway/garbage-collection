@@ -30,7 +30,7 @@ class BroadcastAll
 
   bloom do
     chn <~ (log * node).pairs {|m,n| [m.id, m.creator, n.addr, m.val]}
-    log <= chn {|c| [c.id, c.creator, c.val]}
+    log <= chn.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
@@ -46,8 +46,8 @@ rlist.each(&:run_bg)
 s = BroadcastAll.new([addrs.first])
 s.run_bg
 s.sync_do {
-  s.sbuf <+ [[1, s.ip_port, 'foo'],
-             [2, s.ip_port, 'bar']]
+  s.log <+ [[1, s.ip_port, 'foo'],
+            [2, s.ip_port, 'bar']]
 }
 
 sleep 2

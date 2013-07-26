@@ -32,11 +32,12 @@ class BroadcastAllRewrite
 
   bloom do
     chn <~ ((log * node).pairs {|m,n| [m.id, m.creator, n.addr, m.val]}).notin(chn_approx)
-    log <= chn {|c| [c.id, c.creator, c.val]}
+    log <= chn.payloads
 
-    ack_chn <~ chn {|c| [remote_addr(c)] + c}
-    chn_approx <= ack_chn {|c| [c.id, c.creator, c.addr, c.val]}
+    ack_chn <~ chn {|c| [c.source_address] + c}
+    chn_approx <= ack_chn.payloads
 
+    stdio <~ ack_chn {|c| ["Got ack: #{c.inspect}"]}
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
 end
@@ -51,11 +52,11 @@ rlist.each(&:run_bg)
 s = BroadcastAllRewrite.new([addrs.first])
 s.run_bg
 s.sync_do {
-  s.sbuf <+ [[1, s.ip_port, 'foo'],
-             [2, s.ip_port, 'bar']]
+  s.log <+ [[1, s.ip_port, 'foo'],
+            [2, s.ip_port, 'bar']]
 }
 
-sleep 2
+sleep 5
 
 s.stop
 rlist.each(&:stop)
