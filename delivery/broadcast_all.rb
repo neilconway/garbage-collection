@@ -41,16 +41,11 @@ addrs = ports.map {|p| "127.0.0.1:#{p}"}
 rlist = ports.map {|p| BroadcastAll.new(addrs, :port => p)}
 rlist.each(&:run_bg)
 
-# NB: as a hack to test that we tolerate sender failures, have the original
-# sender only send to one of the receivers.
-s = BroadcastAll.new([addrs.first])
-s.run_bg
+s = rlist.first
 s.sync_do {
-  s.log <+ [[1, s.ip_port, 'foo'],
+  s.log <+ [[1, s.ip_port, 'foo']]
             [2, s.ip_port, 'bar']]
 }
 
-sleep 2
-
-s.stop
+sleep 5
 rlist.each(&:stop)
