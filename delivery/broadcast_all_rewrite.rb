@@ -25,38 +25,34 @@ class BroadcastAllRewrite
   state do
     table :node, [:addr]        # XXX: s/table/immutable/
     table :log, [:id, :creator] => [:val]
-    channel :chn, [:id, :creator, :@addr] => [:val]
+    channel :chn, [:@addr, :id, :creator] => [:val]
     table :chn_approx, chn.schema
-    channel :ack_chn, [:@sender, :id, :creator, :addr] => [:val]
+    channel :ack_chn, [:@sender, :addr, :id, :creator] => [:val]
   end
 
   bloom do
-    chn <~ ((log * node).pairs {|m,n| [m.id, m.creator, n.addr, m.val]}).notin(chn_approx)
+    chn <~ ((log * node).pairs {|m,n| [n.addr] + m}).notin(chn_approx)
     log <= chn.payloads
 
     ack_chn <~ chn {|c| [c.source_address] + c}
     chn_approx <= ack_chn.payloads
 
-    stdio <~ ack_chn {|c| ["Got ack: #{c.inspect}"]}
-    stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
+    stdio <~ ack_chn {|c| ["Got ack @ #{port}, t = #{budtime}: #{c.inspect}"]}
+    stdio <~ chn {|c| ["Got msg @ #{port}, t = #{budtime}: #{c.inspect}"]}
   end
 end
 
 ports = (1..3).map {|i| i + 10001}
-addrs = ports.map {|p| "localhost:#{p}"}
-rlist = ports.map {|p| BroadcastAllRewrite.new(addrs, :ip => "localhost", :port => p)}
+addrs = ports.map {|p| "127.0.0.1:#{p}"}
+rlist = ports.map {|p| BroadcastAllRewrite.new(addrs, :port => p,
+                                               :channel_stats => true)}
 rlist.each(&:run_bg)
 
-# NB: as a hack to test that we tolerate sender failures, have the original
-# sender only send to one of the receivers.
-s = BroadcastAllRewrite.new([addrs.first])
-s.run_bg
+s = rlist.first
 s.sync_do {
-  s.log <+ [[1, s.ip_port, 'foo'],
+  s.log <+ [[1, s.ip_port, 'foo']]
             [2, s.ip_port, 'bar']]
 }
 
 sleep 5
-
-s.stop
 rlist.each(&:stop)

@@ -25,11 +25,11 @@ class BroadcastAll
   state do
     table :node, [:addr]        # XXX: s/table/immutable/
     table :log, [:id, :creator] => [:val]
-    channel :chn, [:id, :creator, :@addr] => [:val]
+    channel :chn, [:@addr, :id, :creator] => [:val]
   end
 
   bloom do
-    chn <~ (log * node).pairs {|m,n| [m.id, m.creator, n.addr, m.val]}
+    chn <~ (log * node).pairs {|m,n| [n.addr] + m}
     log <= chn.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
@@ -37,8 +37,8 @@ class BroadcastAll
 end
 
 ports = (1..3).map {|i| i + 10001}
-addrs = ports.map {|p| "localhost:#{p}"}
-rlist = ports.map {|p| BroadcastAll.new(addrs, :ip => "localhost", :port => p)}
+addrs = ports.map {|p| "127.0.0.1:#{p}"}
+rlist = ports.map {|p| BroadcastAll.new(addrs, :port => p)}
 rlist.each(&:run_bg)
 
 # NB: as a hack to test that we tolerate sender failures, have the original
