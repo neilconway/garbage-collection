@@ -17,14 +17,14 @@ class BroadcastFixed
 
   state do
     table :node, [:addr]        # XXX: s/table/immutable/
-    table :sbuf, [:id] => [:val, :sender]
-    channel :chn, [:id, :@addr] => [:val, :sender]
-    table :rbuf, chn.schema
+    table :sbuf, [:id] => [:val]
+    channel :chn, [:@addr, :id] => [:val]
+    table :rbuf, sbuf.schema
   end
 
   bloom do
-    chn  <~ (sbuf * node).pairs {|m,n| [m.id, n.addr, m.val, m.sender]}
-    rbuf <= chn
+    chn  <~ (sbuf * node).pairs {|m,n| [n.addr] + m}
+    rbuf <= chn.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
@@ -37,8 +37,8 @@ r_addrs = rlist.map(&:ip_port)
 s = BroadcastFixed.new(r_addrs)
 s.run_bg
 s.sync_do {
-  s.sbuf <+ [[1, 'foo', s.ip_port],
-             [2, 'bar', s.ip_port]]
+  s.sbuf <+ [[1, 'foo'],
+             [2, 'bar']]
 }
 
 sleep 2

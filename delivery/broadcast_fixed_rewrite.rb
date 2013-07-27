@@ -17,19 +17,19 @@ class BroadcastFixedRewrite
 
   state do
     table :node, [:addr]        # XXX: s/table/immutable/
-    table :sbuf, [:id] => [:val, :sender]
-    channel :chn, [:id, :@addr] => [:val, :sender]
-    table :rbuf, chn.schema
-    table :rbuf_approx, rbuf.schema
-    channel :ack_chn, [:id, :addr] => [:val, :@sender]
+    table :sbuf, [:id] => [:val]
+    channel :chn, [:@addr, :id] => [:val]
+    table :rbuf, sbuf.schema
+    table :chn_approx, chn.schema
+    channel :ack_chn, [:@sender, :addr, :id] => [:val]
   end
 
   bloom do
-    chn  <~ ((sbuf * node).pairs {|m,n| [m.id, n.addr, m.val, m.sender]}).notin(rbuf_approx)
-    rbuf <= chn
+    chn  <~ ((sbuf * node).pairs {|m,n| [n.addr] + m}).notin(chn_approx)
+    rbuf <= chn.payloads
 
-    ack_chn <~ chn
-    rbuf_approx <= ack_chn
+    ack_chn <~ chn {|c| [c.source_address] + c}
+    chn_approx <= ack_chn.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
     stdio <~ ack_chn {|c| ["Got ack: #{c.inspect}"]}
@@ -43,8 +43,8 @@ r_addrs = rlist.map(&:ip_port)
 s = BroadcastFixedRewrite.new(r_addrs)
 s.run_bg
 s.sync_do {
-  s.sbuf <+ [[1, 'foo', s.ip_port],
-             [2, 'bar', s.ip_port]]
+  s.sbuf <+ [[1, 'foo'],
+             [2, 'bar']]
 }
 
 sleep 2
