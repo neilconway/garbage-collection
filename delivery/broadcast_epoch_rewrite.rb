@@ -17,19 +17,19 @@ class BroadcastEpochRewrite
 
   state do
     table :node, [:addr, :epoch]        # XXX: s/table/sealed-on-epoch/
-    table :sbuf, [:id] => [:epoch, :val, :sender]
-    channel :chn, [:id, :@addr] => [:epoch, :val, :sender]
-    table :rbuf, chn.schema
-    table :rbuf_approx, rbuf.schema
-    channel :ack_chn, [:id, :addr] => [:epoch, :val, :@sender]
+    table :sbuf, [:id] => [:epoch, :val]
+    table :rbuf, sbuf.schema
+    channel :chn, [:@addr, :id] => [:epoch, :val]
+    table :chn_approx, chn.schema
+    channel :ack_chn, [:@sender, :addr, :id] => [:epoch, :val]
   end
 
   bloom do
-    chn <~ ((sbuf * node).pairs(:epoch => :epoch) {|m,n| [m.id, n.addr, m.epoch, m.val, m.sender]}).notin(rbuf_approx)
-    rbuf <= chn
+    chn <~ ((sbuf * node).pairs(:epoch => :epoch) {|m,n| [n.addr] + m}).notin(chn_approx)
+    rbuf <= chn.payloads
 
-    ack_chn <~ chn
-    rbuf_approx <= ack_chn
+    ack_chn <~ chn {|c| [c.source_address] + c}
+    chn_approx <= ack_chn.payloads
 
     stdio <~ ack_chn {|c| ["Got ack: #{c.inspect}"]}
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
@@ -45,8 +45,8 @@ s.run_bg
 s.sync_do {
   s.node <+ [[r_addrs.first, "first"]]
   s.node <+ r_addrs.map {|a| [a, "second"]}
-  s.sbuf <+ [[1, "first", 'foo', s.ip_port],
-             [2, "second", 'bar', s.ip_port]]
+  s.sbuf <+ [[1, "first", 'foo'],
+             [2, "second", 'bar']]
 }
 
 sleep 2
