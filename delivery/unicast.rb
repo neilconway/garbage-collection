@@ -11,8 +11,8 @@ class Unicast
   end
 
   bloom do
-    chn   <~ sbuf
-    rbuf  <= chn
+    chn  <~ sbuf
+    rbuf <= chn
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end

@@ -6,9 +6,9 @@ require 'bud'
 class BroadcastFixedRewrite
   include Bud
 
-  def initialize(addrs=[])
+  def initialize(addrs=[], opts={})
     @addr_list = addrs
-    super()
+    super(opts)
   end
 
   bootstrap do
@@ -21,26 +21,27 @@ class BroadcastFixedRewrite
     channel :chn, [:@addr, :id] => [:val]
     table :rbuf, sbuf.schema
     table :chn_approx, chn.schema
-    channel :ack_chn, [:@sender, :addr, :id] => [:val]
+    channel :chn_ack, [:@sender, :addr, :id] => [:val]
   end
 
   bloom do
     chn  <~ ((sbuf * node).pairs {|m,n| [n.addr] + m}).notin(chn_approx)
     rbuf <= chn.payloads
 
-    ack_chn <~ chn {|c| [c.source_address] + c}
-    chn_approx <= ack_chn.payloads
+    chn_ack <~ chn {|c| [c.source_address] + c}
+    chn_approx <= chn_ack.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
-    stdio <~ ack_chn {|c| ["Got ack: #{c.inspect}"]}
   end
 end
 
-rlist = Array.new(2) { BroadcastFixedRewrite.new }
+opts = { :channel_stats => true, :disable_rce => true }
+
+rlist = Array.new(2) { BroadcastFixedRewrite.new([], opts) }
 rlist.each(&:run_bg)
 r_addrs = rlist.map(&:ip_port)
 
-s = BroadcastFixedRewrite.new(r_addrs)
+s = BroadcastFixedRewrite.new(r_addrs, opts)
 s.run_bg
 s.sync_do {
   s.sbuf <+ [[1, 'foo'],

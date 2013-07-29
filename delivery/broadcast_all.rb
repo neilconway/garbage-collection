@@ -36,14 +36,16 @@ class BroadcastAll
   end
 end
 
+opts = { :channel_stats => true, :disable_rce => false }
+
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "127.0.0.1:#{p}"}
-rlist = ports.map {|p| BroadcastAll.new(addrs, :port => p)}
+rlist = ports.map {|p| BroadcastAll.new(addrs, opts.merge(:port => p))}
 rlist.each(&:run_bg)
 
 s = rlist.first
 s.sync_do {
-  s.log <+ [[1, s.ip_port, 'foo']]
+  s.log <+ [[1, s.ip_port, 'foo'],
             [2, s.ip_port, 'bar']]
 }
 

@@ -30,11 +30,13 @@ class BroadcastEpoch
   end
 end
 
-rlist = Array.new(2) { BroadcastEpoch.new }
+opts = { :channel_stats => true, :disable_rce => false }
+
+rlist = Array.new(2) { BroadcastEpoch.new(opts) }
 rlist.each(&:run_bg)
 r_addrs = rlist.map(&:ip_port)
 
-s = BroadcastEpoch.new
+s = BroadcastEpoch.new(opts)
 s.run_bg
 s.sync_do {
   s.node <+ [[r_addrs.first, "first"]]

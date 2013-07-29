@@ -27,30 +27,30 @@ class BroadcastAllRewrite
     table :log, [:id, :creator] => [:val]
     channel :chn, [:@addr, :id, :creator] => [:val]
     table :chn_approx, chn.schema
-    channel :ack_chn, [:@sender, :addr, :id, :creator] => [:val]
+    channel :chn_ack, [:@sender, :addr, :id, :creator] => [:val]
   end
 
   bloom do
     chn <~ ((log * node).pairs {|m,n| [n.addr] + m}).notin(chn_approx)
     log <= chn.payloads
 
-    ack_chn <~ chn {|c| [c.source_address] + c}
-    chn_approx <= ack_chn.payloads
+    chn_ack <~ chn {|c| [c.source_address] + c}
+    chn_approx <= chn_ack.payloads
 
-    stdio <~ ack_chn {|c| ["Got ack @ #{port}, t = #{budtime}: #{c.inspect}"]}
-    stdio <~ chn {|c| ["Got msg @ #{port}, t = #{budtime}: #{c.inspect}"]}
+    stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
 end
 
+opts = { :channel_stats => true, :disable_rce => true }
+
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "127.0.0.1:#{p}"}
-rlist = ports.map {|p| BroadcastAllRewrite.new(addrs, :port => p,
-                                               :channel_stats => true)}
+rlist = ports.map {|p| BroadcastAllRewrite.new(addrs, opts.merge(:port => p))}
 rlist.each(&:run_bg)
 
 s = rlist.first
 s.sync_do {
-  s.log <+ [[1, s.ip_port, 'foo']]
+  s.log <+ [[1, s.ip_port, 'foo'],
             [2, s.ip_port, 'bar']]
 }
 

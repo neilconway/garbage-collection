@@ -6,9 +6,9 @@ require 'bud'
 class BroadcastFixed
   include Bud
 
-  def initialize(addrs=[])
+  def initialize(addrs=[], opts={})
     @addr_list = addrs
-    super()
+    super(opts)
   end
 
   bootstrap do
@@ -30,11 +30,13 @@ class BroadcastFixed
   end
 end
 
-rlist = Array.new(2) { BroadcastFixed.new }
+opts = { :channel_stats => true, :disable_rce => false }
+
+rlist = Array.new(2) { BroadcastFixed.new([], opts) }
 rlist.each(&:run_bg)
 r_addrs = rlist.map(&:ip_port)
 
-s = BroadcastFixed.new(r_addrs)
+s = BroadcastFixed.new(r_addrs, opts)
 s.run_bg
 s.sync_do {
   s.sbuf <+ [[1, 'foo'],

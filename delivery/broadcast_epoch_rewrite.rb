@@ -21,26 +21,27 @@ class BroadcastEpochRewrite
     table :rbuf, sbuf.schema
     channel :chn, [:@addr, :id] => [:epoch, :val]
     table :chn_approx, chn.schema
-    channel :ack_chn, [:@sender, :addr, :id] => [:epoch, :val]
+    channel :chn_ack, [:@sender, :addr, :id] => [:epoch, :val]
   end
 
   bloom do
     chn <~ ((sbuf * node).pairs(:epoch => :epoch) {|m,n| [n.addr] + m}).notin(chn_approx)
     rbuf <= chn.payloads
 
-    ack_chn <~ chn {|c| [c.source_address] + c}
-    chn_approx <= ack_chn.payloads
+    chn_ack <~ chn {|c| [c.source_address] + c}
+    chn_approx <= chn_ack.payloads
 
-    stdio <~ ack_chn {|c| ["Got ack: #{c.inspect}"]}
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
 end
 
-rlist = Array.new(2) { BroadcastEpochRewrite.new }
+opts = { :channel_stats => true, :disable_rce => true }
+
+rlist = Array.new(2) { BroadcastEpochRewrite.new(opts) }
 rlist.each(&:run_bg)
 r_addrs = rlist.map(&:ip_port)
 
-s = BroadcastEpochRewrite.new
+s = BroadcastEpochRewrite.new(opts)
 s.run_bg
 s.sync_do {
   s.node <+ [[r_addrs.first, "first"]]
