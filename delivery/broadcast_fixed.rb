@@ -23,7 +23,7 @@ class BroadcastFixed
   end
 
   bloom do
-    chn  <~ (sbuf * node).pairs {|m,n| [n.addr] + m}
+    chn  <~ (sbuf * node).pairs {|m,n| n + m}
     rbuf <= chn.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}

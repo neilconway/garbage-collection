@@ -29,7 +29,7 @@ class BroadcastAll
   end
 
   bloom do
-    chn <~ (log * node).pairs {|m,n| [n.addr] + m}
+    chn <~ (log * node).pairs {|m,n| n + m}
     log <= chn.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}

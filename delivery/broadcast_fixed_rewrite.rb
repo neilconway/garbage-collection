@@ -25,7 +25,7 @@ class BroadcastFixedRewrite
   end
 
   bloom do
-    chn  <~ ((sbuf * node).pairs {|m,n| [n.addr] + m}).notin(chn_approx)
+    chn  <~ ((sbuf * node).pairs {|m,n| n + m}).notin(chn_approx)
     rbuf <= chn.payloads
 
     chn_ack <~ chn {|c| [c.source_address] + c}

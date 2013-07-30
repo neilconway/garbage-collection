@@ -31,7 +31,7 @@ class BroadcastAllRewrite
   end
 
   bloom do
-    chn <~ ((log * node).pairs {|m,n| [n.addr] + m}).notin(chn_approx)
+    chn <~ ((log * node).pairs {|m,n| n + m}).notin(chn_approx)
     log <= chn.payloads
 
     chn_ack <~ chn {|c| [c.source_address] + c}
