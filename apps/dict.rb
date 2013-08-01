@@ -56,8 +56,8 @@ class ReplDict
     del_ops <= log {|l| [l.key] if l.op_type == DELETE_OP}
     view <= ins_ops.notin(del_ops, :key => :key)
 
-    chn <~ (log * node).pairs {|l,n| [n.addr] + l.to_a}
-    log <= chn {|c| [c.creator, c.id, c.op_type, c.key, c.val]}
+    chn <~ (log * node).pairs {|l,n| n + l}
+    log <= chn.payloads
   end
 end
 
