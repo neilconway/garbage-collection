@@ -8,13 +8,13 @@ DELETE_OP = 2
 # similar to Wuu & Bernstein ("Efficient Solutions to the Replicated Log and
 # Dictionary Problems", PODC'84).
 #
-# The system consists of a (fixed) set of nodes; each node has a copy of the
-# log. Any node can add a new entry to the log, which will then be replicated to
-# all the other nodes. Log entries are uniquely identified and consist of an
-# operation (create/delete), a key, and an optional value (for creations). Log
-# entries are used to construct a dictionary. Each node also keeps track of the
-# knowledge at every other node; this information is used to reclaim log entries
-# when we know that they have been delivered to all sites.
+# The system consists of a (fixed) set of nodes; each node has a complete copy
+# of the log. Any node can add a new entry to the log, which will then be
+# replicated to all the other nodes. Log entries are uniquely identified and
+# consist of an operation (create/delete), a key, and an optional value (for
+# creations). Log entries are used to construct a dictionary. Each node also
+# keeps track of the knowledge at every other node; this information is used to
+# reclaim log entries when we know that they have been delivered to all sites.
 #
 # Our goal is to (a) implement the positive dictionary logic (log broadcast +
 # dictionary construction) (b) automatically infer the logic for both
