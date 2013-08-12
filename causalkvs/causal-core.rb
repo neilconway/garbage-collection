@@ -11,20 +11,17 @@ module CausalCore
     scratch :active_puts, put_log.schema
 
     # helper collections
-    scratch :flat_deps, [:reqid, :key, :depkey, :depid]
+    scratch :flat_deps, [:reqid, :key, :depid]
     table :satisfied, [:reqid]
     scratch :good_put, put_log.schema
     scratch :missing_deps, flat_deps.schema
-    
     table :dominated, [:reqid]
     scratch :contains, [:r1, :r2]
   end
 
   bloom do
     flat_deps <= put_log.flat_map do |p|
-      p.deps.map do |d|
-        [p.reqid, p.key, d[0], d[1]]
-      end
+      p.deps.map{|d| [p.reqid, p.key, d]}
     end
 
     # satisfied but not dominated.  both sets of reqids. 
@@ -44,7 +41,6 @@ module CausalCore
     end
     dominated <= (contains * satisfied).lefts(:r1 => :reqid){|c| [c.r2]}
   end
-
 end
 
 
@@ -56,15 +52,15 @@ end
 
 c = CC.new
 
-c.put_log <+ [[1, "foo", "bar", {}]]
-c.put_log <+ [[2, "foo", "baz", {"foo" => 1}]]
-c.put_log <+ [[3, "foo", "qux", {"foo" => 1, "bar" => 4}]]
+c.put_log <+ [[1, "foo", "bar", []]]
+c.put_log <+ [[2, "foo", "baz", [1]]]
+c.put_log <+ [[3, "foo", "qux", [1,4]]]
 
 
 
 c.tick;c.tick
 
-c.put_log <+ [[4, "bar", "eek", {}]]
+c.put_log <+ [[4, "bar", "eek", []]]
 
 c.tick;c.tick
 
@@ -73,5 +69,5 @@ c.put_log.each{|p| puts "PL: #{p}"}
 
 
 
-c.put_log <+ [[5, "foo", "qux", {"foo" => 1, "bar" => 4, "fig" => 7}]]
+c.put_log <+ [[5, "foo", "qux", [1, 4, 7]]]
 c.tick
