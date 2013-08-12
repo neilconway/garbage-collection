@@ -12,15 +12,12 @@ module CausalCore
 
     # helper collections
     scratch :flat_deps, [:reqid, :key, :depkey, :depid]
-    scratch :put_deps, [:reqid, :cnt]
-    scratch :active_cnts, [:reqid, :cnt]
     table :satisfied, [:reqid]
+    scratch :good_put, put_log.schema
+    scratch :missing_deps, flat_deps.schema
     
     table :dominated, [:reqid]
-    scratch :extent, [:key, :reqid, :siz]
-    scratch :possible_dominance, [:key, :r1, :r2, :r2siz]
-    scratch :intersections, [:r1, :r2, :dk, :di]
-    scratch :icnt, [:r1, :r2, :cnt]
+    scratch :contains, [:r1, :r2]
   end
 
   bloom do
@@ -36,37 +33,18 @@ module CausalCore
   end
 
   bloom :satisfied do 
-    satisfied <= put_log{|p| [p.reqid] if p.deps == {}}
-    put_deps <= flat_deps.group([:reqid], count)
-    active_cnts <= (flat_deps * satisfied).lefts(:depid => :reqid).group([:reqid], count)
-    satisfied <+ (put_deps * active_cnts).lefts(:reqid => :reqid, :cnt => :cnt){|p| [p.reqid]}
-  
-    stdio <~ satisfied{|s| ["#{budtime} SAT: #{s}"]}
+    missing_deps <= flat_deps.notin(put_log, :depid => :reqid)
+    good_put <= put_log.notin(missing_deps, :reqid => :reqid)
+    satisfied <= good_put{|p| [p.reqid]}
   end
 
   bloom :dominated do
-    # dominance is dependency-containment.
-    extent <= (flat_deps * satisfied).lefts(:reqid => :reqid).group([:key, :reqid], count(:depkey))
-    dominated <= (extent * put_log).pairs do |e, p|
-      if e.key == p.key and e.reqid != p.reqid and p.deps == {}
-        [p.reqid]
-      end
+    contains <= (put_log * put_log).pairs(:key => :key) do |l1, l2|
+      [l1.reqid, l2.reqid] if l1.reqid != l2.reqid and l2.deps.to_set.subset? l1.deps.to_set
     end
-
-    possible_dominance <= (extent * extent).pairs do |e1, e2|
-      if e1.key == e2.key and e1.reqid != e2.reqid and e1.siz > e2.siz
-        [e1.key, e1.reqid, e2.reqid, e2.siz]
-      end
-    end
-    
-    intersections <= (flat_deps * flat_deps).pairs do |d1, d2|
-      if d1.key == d2.key and d1.reqid != d2.reqid and d1.depkey == d2.depkey and d1.depid == d2.depid
-        [d1.reqid, d2.reqid, d1.depkey, d1.depid]
-      end
-    end
-    icnt <= intersections.group([:r1, :r2], count)
-    dominated <= (possible_dominance * icnt).lefts(:r1 => :r1, :r2 => :r2, :r2siz => :cnt){|p| [p.r2]}
+    dominated <= (contains * satisfied).lefts(:r1 => :reqid){|c| [c.r2]}
   end
+
 end
 
 
