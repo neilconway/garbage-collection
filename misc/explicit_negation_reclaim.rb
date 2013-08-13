@@ -1,6 +1,9 @@
 require 'rubygems'
 require 'bud'
 
+# Additional unspecified safety conditions:
+#  (1) 'sbuf' must not appear on the RHS of any other (user) rules
+#  (2) 'send_ack' must not appear on the LHS of any deletion rules
 class NegationTest
   include Bud
 
@@ -19,6 +22,7 @@ class NegationTest
   end
 
   bloom do
+    # User program, except the notin clause will typically inferred by RCE
     to_send <= ((sbuf * node).pairs(:epoch => :epoch) {|s,n| [s.id, n.addr]}).notin(send_ack)
 
     # Find the set of join input tuples (i.e., pairs of sbuf, node tuples) that
