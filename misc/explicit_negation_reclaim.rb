@@ -18,8 +18,15 @@ class NegationTest
   bloom do
     to_send <= ((sbuf * node).pairs(:epoch => :epoch) {|s,n| [s.id, n.addr]}).notin(send_ack)
 
-    got_ack <= (send_ack * sbuf * node).combos(send_ack.id => sbuf.id, send_ack.addr => node.addr, sbuf.epoch => node.epoch) {|a,s,n| s + n}
+    # Find the set of join input tuples (i.e., pairs of sbuf, node tuples) that
+    # have been acknowledged
+    got_ack <= (send_ack * sbuf * node).combos(send_ack.id => sbuf.id, send_ack.addr => node.addr, sbuf.epoch => node.epoch) {|_,s,n| s + n}
+
+    # An sbuf that doesn't have an acknowledgment for an address in the sbuf's
+    # epoch cannot (yet) be reclaimed
     missing_val <= ((sbuf * node).pairs(:epoch => :epoch) {|s,n| s + n}).notin(got_ack)
+
+    # We can reclaim whatever isn't unsafe to reclaim
     to_reclaim <= sbuf.notin(missing_val, :id => :id, :epoch => :msg_epoch)
   end
 end
