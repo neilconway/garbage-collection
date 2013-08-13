@@ -18,7 +18,7 @@ class NegationTest
   bloom do
     to_send <= ((sbuf * node).pairs(:epoch => :epoch) {|s,n| [s.id, n.addr]}).notin(send_ack)
 
-    got_ack <= (send_ack * sbuf * node).combos(send_ack.id => sbuf.id, send_ack.addr => node.addr, sbuf.epoch => node.epoch) {|a,s,n| [s.id, s.epoch, n.addr, n.epoch]}
+    got_ack <= (send_ack * sbuf * node).combos(send_ack.id => sbuf.id, send_ack.addr => node.addr, sbuf.epoch => node.epoch) {|a,s,n| s + n}
     missing_val <= ((sbuf * node).pairs(:epoch => :epoch) {|s,n| s + n}).notin(got_ack)
     to_reclaim <= sbuf.notin(missing_val, :id => :id, :epoch => :msg_epoch)
   end
