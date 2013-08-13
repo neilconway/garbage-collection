@@ -13,8 +13,7 @@ module CausalCore
     scratch :flat_deps, [:reqid, :depid]
     scratch :missing_deps, flat_deps.schema
     table :good_put, put_log.schema
-    table :dominated, [:reqid]
-    scratch :contains, [:r1, :r2]
+    scratch :dominated, good_put.schema
   end
 
   bloom :satisfied do 
@@ -24,14 +23,13 @@ module CausalCore
 
     missing_deps <= flat_deps.notin(good_put, :depid => :reqid)
     good_put <+ put_log.notin(missing_deps, :reqid => :reqid)
-    active_puts <= (put_log * good_put).lefts(:reqid => :reqid).notin(dominated, :reqid => :reqid)
+    active_puts <= good_put.notin(dominated, :reqid => :reqid)
   end
 
   bloom :dominated do
-    contains <= (put_log * put_log).pairs(:key => :key) do |l1, l2|
-      [l1.reqid, l2.reqid] if l1.reqid != l2.reqid and l2.deps.to_set.subset? l1.deps.to_set
+    dominated <= (good_put * good_put).pairs(:key => :key) do |p1, p2|
+      p2 if p1.reqid != p2.reqid and p2.deps.to_set.subset? p1.deps.to_set
     end
-    dominated <= (contains * good_put).lefts(:r1 => :reqid){|c| [c.r2]}
   end
 end
 
