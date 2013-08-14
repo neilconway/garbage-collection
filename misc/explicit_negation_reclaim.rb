@@ -13,8 +13,8 @@ class NegationTest
     scratch :to_send, [:id, :addr]
     table :send_ack, to_send.schema
 
-    scratch :got_ack, [:id, :msg_epoch, :addr, :addr_epoch]
-    scratch :missing_val, got_ack.schema
+    scratch :got_ack, [:sbuf, :node]
+    scratch :missing_val, sbuf.schema
     scratch :to_reclaim, sbuf.schema
 
     # Sealing metadata: a tuple in this table asserts that no more 'node' tuples
@@ -28,15 +28,15 @@ class NegationTest
 
     # Find the set of join input tuples (i.e., pairs of sbuf, node tuples) that
     # have been acknowledged
-    got_ack <= (send_ack * sbuf * node).combos(send_ack.id => sbuf.id, send_ack.addr => node.addr, sbuf.epoch => node.epoch) {|_,s,n| s + n}
+    got_ack <= (send_ack * sbuf * node).combos(send_ack.id => sbuf.id, send_ack.addr => node.addr, sbuf.epoch => node.epoch) {|_,s,n| [s,n]}
 
     # An sbuf that doesn't have an acknowledgment for an address in the sbuf's
     # epoch cannot (yet) be reclaimed
-    missing_val <= ((sbuf * node).pairs(:epoch => :epoch) {|s,n| s + n}).notin(got_ack)
+    missing_val <= ((sbuf * node).pairs(:epoch => :epoch) {|s,n| [s,n]}).notin(got_ack).pro {|x| x.first}
 
     # We can reclaim whatever isn't unsafe to reclaim, provided the epoch to
     # which the message belongs has been sealed
-    to_reclaim <= (sbuf * node_seal_epoch).lefts(:epoch => :epoch).notin(missing_val, :id => :id, :epoch => :msg_epoch)
+    to_reclaim <= (sbuf * node_seal_epoch).lefts(:epoch => :epoch).notin(missing_val)
   end
 end
 
