@@ -17,12 +17,13 @@ class NegationTest
     scratch :missing_val, got_ack.schema
     scratch :to_reclaim, sbuf.schema
 
-    # Sealing metadata
+    # Sealing metadata: a tuple in this table asserts that no more 'node' tuples
+    # will be delivered for the given epoch.
     table :node_seal_epoch, [:epoch]
   end
 
   bloom do
-    # User program, except the notin clause will typically inferred by RCE
+    # User program, except the notin clause will typically be inferred by RCE
     to_send <= ((sbuf * node).pairs(:epoch => :epoch) {|s,n| [s.id, n.addr]}).notin(send_ack)
 
     # Find the set of join input tuples (i.e., pairs of sbuf, node tuples) that
