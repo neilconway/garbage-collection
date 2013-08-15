@@ -4,7 +4,7 @@ require 'bud'
 # Additional unspecified safety conditions:
 #  (1) 'sbuf' must not appear on the RHS of any other (user) rules
 #  (2) 'send_ack' must not appear on the LHS of any deletion rules
-class NegationTest
+class RseJoinTest
   include Bud
 
   state do
@@ -40,7 +40,7 @@ class NegationTest
   end
 end
 
-n = NegationTest.new
+n = RseJoinTest.new
 n.sbuf <+ [[5, 1], [6, 1], [7, 2]]
 n.node <+ [["foo", 1], ["bar", 1], ["baz", 2]]
 n.tick
