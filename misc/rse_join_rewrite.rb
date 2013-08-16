@@ -13,30 +13,42 @@ class RseJoinTest
     scratch :to_send, [:id, :addr]
     table :send_ack, to_send.schema
 
-    scratch :got_ack, [:sbuf, :node]
-    scratch :missing_val, sbuf.schema
-    scratch :to_reclaim, sbuf.schema
+    scratch :sbuf_node_ack, [:sbuf_id, :sbuf_epoch, :node_addr, :node_epoch]
+    scratch :sbuf_node_missing, sbuf_node_ack.schema
+    scratch :sbuf_reclaim, sbuf.schema
+    scratch :node_reclaim, node.schema
 
     # Sealing metadata: a tuple in this table asserts that no more 'node' tuples
-    # will be delivered for the given epoch.
+    # will be delivered for the given epoch; this allows sbuf messages that have
+    # been acknowledged by all nodes in the sbuf's epoch to be reclaimed.
     table :node_seal_epoch, [:epoch]
+
+    # A tuple in this table asserts that no more 'sbuf' tuples will be delivered
+    # for a given epoch; this allows 'node' tuples that have acknowledged all
+    # the messages in a given epoch to be reclaimed.
+    table :sbuf_seal_epoch, [:epoch]
   end
 
   bloom do
-    # User program, except the notin clause will typically be inferred by RCE
+    # User program (the notin clause will typically be inferred by RCE)
     to_send <= ((sbuf * node).pairs(:epoch => :epoch) {|s,n| [s.id, n.addr]}).notin(send_ack)
 
     # Find the set of join input tuples (i.e., pairs of sbuf, node tuples) that
     # have been acknowledged
-    got_ack <= (send_ack * sbuf * node).combos(send_ack.id => sbuf.id, send_ack.addr => node.addr, sbuf.epoch => node.epoch) {|_,s,n| [s,n]}
+    sbuf_node_ack <= (send_ack * sbuf * node).combos(send_ack.id => sbuf.id, send_ack.addr => node.addr, sbuf.epoch => node.epoch) {|_,s,n| s + n}
 
-    # An sbuf that doesn't have an acknowledgment for an address in the sbuf's
-    # epoch cannot (yet) be reclaimed
-    missing_val <= ((sbuf * node).pairs(:epoch => :epoch) {|s,n| [s,n]}).notin(got_ack).pro {|x| x.first}
+    # Find (sbuf, node) pairs that have not yet been acknowledged
+    sbuf_node_missing <= ((sbuf * node).pairs(:epoch => :epoch) {|s,n| s + n}).notin(sbuf_node_ack)
 
-    # We can reclaim whatever isn't unsafe to reclaim, provided the epoch to
-    # which the message belongs has been sealed
-    to_reclaim <= (sbuf * node_seal_epoch).lefts(:epoch => :epoch).notin(missing_val)
+    # We can reclaim an sbuf s when (a) the list of node addresses in s.epoch is
+    # sealed (b) s has been acknowledged by all the addresses in the epoch
+    # (i.e., (s, n) does not exist in sbuf_node_missing for any n).
+    sbuf_reclaim <= (sbuf * node_seal_epoch).lefts(:epoch => :epoch).notin(sbuf_node_missing, :id => :sbuf_id, :epoch => :sbuf_epoch)
+
+    # We can reclaim a node n when (a) the list of messages (sbuf) in n.epoch is
+    # sealed (b) n has acknowledged all the messages in the epoch (i.e., (s, n)
+    # does not exist in sbuf_node_missing for any s).
+    node_reclaim <= (node * sbuf_seal_epoch).lefts(:epoch => :epoch).notin(sbuf_node_missing, :addr => :node_addr, :epoch => :node_epoch)
   end
 end
 
@@ -45,29 +57,29 @@ n.sbuf <+ [[5, 1], [6, 1], [7, 2]]
 n.node <+ [["foo", 1], ["bar", 1], ["baz", 2]]
 n.tick
 
-puts "MISSING: #{n.missing_val.to_a.inspect}"
-puts "TO RECLAIM: #{n.to_reclaim.to_a.inspect}"
+puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
+puts "TO RECLAIM: #{n.sbuf_reclaim.to_a.inspect}"
 
 n.send_ack <+ [[5, "foo"], [5, "bar"], [6, "foo"]]
 n.tick
 
-puts "MISSING: #{n.missing_val.to_a.inspect}"
-puts "TO RECLAIM: #{n.to_reclaim.to_a.inspect}"
+puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
+puts "TO RECLAIM: #{n.sbuf_reclaim.to_a.inspect}"
 
 n.node_seal_epoch <+ [[1]]
 n.tick
 
-puts "MISSING: #{n.missing_val.to_a.inspect}"
-puts "TO RECLAIM: #{n.to_reclaim.to_a.inspect}"
+puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
+puts "TO RECLAIM: #{n.sbuf_reclaim.to_a.inspect}"
 
 n.send_ack <+ [[7, "baz"]]
 n.tick
 
-puts "MISSING: #{n.missing_val.to_a.inspect}"
-puts "TO RECLAIM: #{n.to_reclaim.to_a.inspect}"
+puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
+puts "TO RECLAIM: #{n.sbuf_reclaim.to_a.inspect}"
 
 n.node_seal_epoch <+ [[2]]
 n.tick
 
-puts "MISSING: #{n.missing_val.to_a.inspect}"
-puts "TO RECLAIM: #{n.to_reclaim.to_a.inspect}"
+puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
+puts "TO RECLAIM: #{n.sbuf_reclaim.to_a.inspect}"
