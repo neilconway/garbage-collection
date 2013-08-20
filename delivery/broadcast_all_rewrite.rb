@@ -24,10 +24,10 @@ class BroadcastAllRewrite
 
   state do
     immutable :node, [:addr]
-    table :log, [:id, :creator] => [:val]
-    channel :chn, [:@addr, :id, :creator] => [:val]
+    table :log, [:creator, :id] => [:val]
+    channel :chn, [:@addr, :creator, :id] => [:val]
     table :chn_approx, chn.schema
-    channel :chn_ack, [:@sender, :addr, :id, :creator] => [:val]
+    channel :chn_ack, [:@sender, :addr, :creator, :id] => [:val]
   end
 
   bloom do
@@ -50,8 +50,8 @@ rlist.each(&:run_bg)
 
 s = rlist.first
 s.sync_do {
-  s.log <+ [[1, s.ip_port, 'foo'],
-            [2, s.ip_port, 'bar']]
+  s.log <+ [[s.ip_port, 1, 'foo'],
+            [s.ip_port, 2, 'bar']]
 }
 
 sleep 5
