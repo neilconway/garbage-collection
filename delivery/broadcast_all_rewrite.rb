@@ -23,7 +23,7 @@ class BroadcastAllRewrite
   end
 
   state do
-    table :node, [:addr]        # XXX: s/table/immutable/
+    immutable :node, [:addr]
     table :log, [:id, :creator] => [:val]
     channel :chn, [:@addr, :id, :creator] => [:val]
     table :chn_approx, chn.schema

@@ -16,7 +16,7 @@ class BroadcastFixed
   end
 
   state do
-    table :node, [:addr]        # XXX: s/table/immutable/
+    immutable :node, [:addr]
     table :sbuf, [:id] => [:val]
     channel :chn, [:@addr, :id] => [:val]
     table :rbuf, sbuf.schema

@@ -43,7 +43,7 @@ class ReplDict
   end
 
   state do
-    table :node, [:addr]        # XXX: immutable
+    immutable :node, [:addr]
     table :log, [:creator, :id] => [:op_type, :key, :val]
     channel :chn, [:@addr, :creator, :id] => [:op_type, :key, :val]
     scratch :view, [:key] => [:val]
