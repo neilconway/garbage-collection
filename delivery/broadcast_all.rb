@@ -36,7 +36,7 @@ class BroadcastAll
   end
 end
 
-opts = { :channel_stats => true, :disable_rce => false }
+opts = { :channel_stats => true, :disable_rce => false, :disable_rse => false }
 
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "127.0.0.1:#{p}"}
@@ -49,5 +49,12 @@ s.sync_do {
             [s.ip_port, 2, 'bar']]
 }
 
-sleep 5
+sleep 4
+
+rlist.each do |r|
+  r.sync_do {
+    puts "#{r.port}: log size = #{r.log.to_a.size}"
+  }
+end
+
 rlist.each(&:stop)
