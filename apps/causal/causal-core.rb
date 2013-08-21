@@ -28,8 +28,12 @@ module CausalCore
 
   bloom :dominated do
     dominated <= (good_put * good_put).pairs(:key => :key) do |p1, p2|
-      p2 if p1.reqid != p2.reqid and p2.deps.to_set.subset? p1.deps.to_set
+      p2 if p1 != p2 and p1.deps.include? p2.reqid
     end
+  end
+
+  def print_view
+    puts active_puts.map {|p| "#{p.key} => #{p.value}"}.sort.inspect
   end
 end
 
@@ -39,23 +43,24 @@ class CC
   include CausalCore
 end
 
-
 c = CC.new
 c.put_log <+ [[1, "foo", "bar", []],
               [2, "foo", "baz", [1]],
               [3, "foo", "qux", [1,4]]]
 c.tick; c.tick; c.tick
-
-puts c.active_puts.to_a.sort.inspect
+c.print_view
 
 c.put_log <+ [[4, "bar", "eek", []]]
 c.tick; c.tick; c.tick
+c.print_view
 
-puts c.active_puts.to_a.sort.inspect
-
-c.put_log <+ [[5, "foo", "quux", [1, 4, 8]],
+c.put_log <+ [[5, "foo", "quux", [1, 4, 99]],
               [6, "trick", "treat", [1, 5]],
               [7, "k", "v", [2]]]
 c.tick; c.tick
+c.print_view
 
-puts c.active_puts.to_a.sort.inspect
+c.put_log <+ [[8, "foo", "FINAL", [3]]]
+c.tick; c.tick
+c.print_view
+
