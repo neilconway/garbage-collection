@@ -24,10 +24,10 @@ class BroadcastAllRewrite
 
   state do
     sealed :node, [:addr]
-    table :log, [:creator, :id] => [:val]
-    channel :chn, [:@addr, :creator, :id] => [:val]
+    table :log, [:id] => [:val]
+    channel :chn, [:@addr, :id] => [:val]
     table :chn_approx, chn.schema
-    channel :chn_ack, [:@sender, :addr, :creator, :id] => [:val]
+    channel :chn_ack, [:@sender, :addr, :id] => [:val]
   end
 
   bloom do
@@ -41,7 +41,7 @@ class BroadcastAllRewrite
   end
 end
 
-opts = { :channel_stats => true, :disable_rce => true, :disable_rse => true }
+opts = { :channel_stats => true, :disable_rce => true, :disable_rse => false }
 
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "127.0.0.1:#{p}"}
@@ -50,8 +50,8 @@ rlist.each(&:run_bg)
 
 s = rlist.first
 s.sync_do {
-  s.log <+ [[s.ip_port, 1, 'foo'],
-            [s.ip_port, 2, 'bar']]
+  s.log <+ [[[s.ip_port, 1], 'foo'],
+            [[s.ip_port, 2], 'bar']]
 }
 
 sleep 4

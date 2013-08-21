@@ -24,8 +24,8 @@ class BroadcastAll
 
   state do
     sealed :node, [:addr]
-    table :log, [:creator, :id] => [:val]
-    channel :chn, [:@addr, :creator, :id] => [:val]
+    table :log, [:id] => [:val]
+    channel :chn, [:@addr, :id] => [:val]
   end
 
   bloom do
@@ -45,8 +45,8 @@ rlist.each(&:run_bg)
 
 s = rlist.first
 s.sync_do {
-  s.log <+ [[s.ip_port, 1, 'foo'],
-            [s.ip_port, 2, 'bar']]
+  s.log <+ [[[s.ip_port, 1], 'foo'],
+            [[s.ip_port, 2], 'bar']]
 }
 
 sleep 4

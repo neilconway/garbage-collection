@@ -44,8 +44,8 @@ class ReplDict
 
   state do
     sealed :node, [:addr]
-    table :log, [:creator, :id] => [:op_type, :key, :val]
-    channel :chn, [:@addr, :creator, :id] => [:op_type, :key, :val]
+    table :log, [:id] => [:op_type, :key, :val]
+    channel :chn, [:@addr, :id] => [:op_type, :key, :val]
     scratch :view, [:key] => [:val]
     scratch :ins_ops, [:key] => [:val]
     scratch :del_ops, [:key]
@@ -68,13 +68,13 @@ rlist.each(&:run_bg)
 
 rlist.each_with_index do |r,i|
   r.sync_do {
-    r.log <+ [[r.ip_port, 1, INSERT_OP, "foo#{i}", 'bar']]
+    r.log <+ [[[r.ip_port, 1], INSERT_OP, "foo#{i}", 'bar']]
   }
 end
 
 r = rlist.first
 r.sync_do {
-  r.log <+ [[r.ip_port, 2, DELETE_OP, 'foo2']]
+  r.log <+ [[[r.ip_port, 2], DELETE_OP, 'foo2']]
 }
 
 sleep 2
