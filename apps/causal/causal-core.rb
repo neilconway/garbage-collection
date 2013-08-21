@@ -60,7 +60,8 @@ c.put_log <+ [[5, "foo", "quux", [1, 4, 99]],
 c.tick; c.tick
 c.print_view
 
-c.put_log <+ [[8, "foo", "FINAL", [3]]]
+c.put_log <+ [[8, "foo", "FINAL1", [3]],
+              [9, "foo", "FINAL2", [1]]]
 c.tick; c.tick
 c.print_view
 
