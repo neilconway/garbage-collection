@@ -6,15 +6,6 @@ require 'bud'
 class BroadcastFixedRewrite
   include Bud
 
-  def initialize(addrs=[], opts={})
-    @addr_list = addrs
-    super(opts)
-  end
-
-  bootstrap do
-    node <= @addr_list.map {|a| [a]}
-  end
-
   state do
     sealed :node, [:addr]
     table :sbuf, [:id] => [:val]
@@ -35,20 +26,25 @@ class BroadcastFixedRewrite
   end
 end
 
-opts = { :channel_stats => true, :disable_rce => true }
+opts = { :channel_stats => true, :disable_rce => true, :disable_rse => false }
 
-rlist = Array.new(2) { BroadcastFixedRewrite.new([], opts) }
+rlist = Array.new(2) { BroadcastFixedRewrite.new(opts) }
 rlist.each(&:run_bg)
-r_addrs = rlist.map(&:ip_port)
 
-s = BroadcastFixedRewrite.new(r_addrs, opts)
+s = BroadcastFixedRewrite.new(opts)
+s.node <+ rlist.map {|r| [r.ip_port]}
 s.run_bg
+
 s.sync_do {
   s.sbuf <+ [[1, 'foo'],
              [2, 'bar']]
 }
 
 sleep 2
+
+s.sync_do {
+  puts "#{s.port}: log size = #{s.sbuf.to_a.size}"
+}
 
 s.stop
 rlist.each(&:stop)

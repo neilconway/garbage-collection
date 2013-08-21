@@ -33,15 +33,6 @@ DELETE_OP = 2
 class ReplDict
   include Bud
 
-  def initialize(addrs, opts={})
-    @addr_list = addrs
-    super(opts)
-  end
-
-  bootstrap do
-    node <= @addr_list.map {|a| [a]}
-  end
-
   state do
     sealed :node, [:addr]
     table :log, [:id] => [:op_type, :key, :val]
@@ -63,8 +54,11 @@ end
 
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "localhost:#{p}"}
-rlist = ports.map {|p| ReplDict.new(addrs, :ip => "localhost", :port => p)}
-rlist.each(&:run_bg)
+rlist = ports.map {|p| ReplDict.new(:ip => "localhost", :port => p)}
+rlist.each do |r|
+  r.node <+ addrs.map {|a| [a]}
+  r.run_bg
+end
 
 rlist.each_with_index do |r,i|
   r.sync_do {

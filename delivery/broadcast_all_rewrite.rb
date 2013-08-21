@@ -13,15 +13,6 @@ require 'bud'
 class BroadcastAllRewrite
   include Bud
 
-  def initialize(addrs, opts={})
-    @addr_list = addrs
-    super(opts)
-  end
-
-  bootstrap do
-    node <= @addr_list.map {|a| [a]}
-  end
-
   state do
     sealed :node, [:addr]
     table :log, [:id] => [:val]
@@ -45,8 +36,11 @@ opts = { :channel_stats => true, :disable_rce => true, :disable_rse => false }
 
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "127.0.0.1:#{p}"}
-rlist = ports.map {|p| BroadcastAllRewrite.new(addrs, opts.merge(:port => p))}
-rlist.each(&:run_bg)
+rlist = ports.map {|p| BroadcastAllRewrite.new(opts.merge(:port => p))}
+rlist.each do |r|
+  r.node <+ addrs.map {|a| [a]}
+  r.run_bg
+end
 
 s = rlist.first
 s.sync_do {
