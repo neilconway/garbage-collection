@@ -23,7 +23,7 @@ class BroadcastAll
   end
 
   state do
-    immutable :node, [:addr]
+    sealed :node, [:addr]
     table :log, [:creator, :id] => [:val]
     channel :chn, [:@addr, :creator, :id] => [:val]
   end

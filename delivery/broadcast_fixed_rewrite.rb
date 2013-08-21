@@ -16,7 +16,7 @@ class BroadcastFixedRewrite
   end
 
   state do
-    immutable :node, [:addr]
+    sealed :node, [:addr]
     table :sbuf, [:id] => [:val]
     channel :chn, [:@addr, :id] => [:val]
     table :rbuf, sbuf.schema
