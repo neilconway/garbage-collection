@@ -57,7 +57,8 @@ last.sync_do {
 }
 
 last.sync_do {
-  last.log <+ [[[last.port, 2], 'baz', 'kkk', []]]
+  last.log <+ [[[last.port, 2], 'baz', 'kkk', []],
+               [[last.port, 3], 'baz', 'kkk2', [[first.port, 2]]]]
 }
 
 sleep 1
