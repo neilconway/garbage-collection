@@ -15,8 +15,6 @@ class RseJoinTest
 
     scratch :sbuf_node_joinbuf, [:sbuf_id, :sbuf_epoch, :node_addr, :node_epoch]
     scratch :sbuf_node_missing, sbuf_node_joinbuf.schema
-    scratch :sbuf_reclaim, sbuf.schema
-    scratch :node_reclaim, node.schema
 
     # Sealing metadata: a tuple in this table asserts that no more 'node' tuples
     # will be delivered for the given epoch; this allows sbuf messages that have
@@ -43,60 +41,65 @@ class RseJoinTest
     # We can reclaim an sbuf s when (a) the list of node addresses in s.epoch is
     # sealed (b) s has been acknowledged by all the addresses in the epoch
     # (i.e., (s, n) does not exist in sbuf_node_missing for any n).
-    sbuf_reclaim <= (sbuf * seal_node_epoch).lefts(:epoch => :epoch).notin(sbuf_node_missing, :id => :sbuf_id, :epoch => :sbuf_epoch)
-    sbuf <- sbuf_reclaim
+    sbuf <- (sbuf * seal_node_epoch).lefts(:epoch => :epoch).notin(sbuf_node_missing, :id => :sbuf_id, :epoch => :sbuf_epoch)
 
     # We can reclaim a node n when (a) the list of messages (sbuf) in n.epoch is
     # sealed (b) n has acknowledged all the messages in the epoch (i.e., (s, n)
     # does not exist in sbuf_node_missing for any s).
-    node_reclaim <= (node * seal_sbuf_epoch).lefts(:epoch => :epoch).notin(sbuf_node_missing, :addr => :node_addr, :epoch => :node_epoch)
-    node <- node_reclaim
+    node <- (node * seal_sbuf_epoch).lefts(:epoch => :epoch).notin(sbuf_node_missing, :addr => :node_addr, :epoch => :node_epoch)
   end
 end
 
 n = RseJoinTest.new
+puts "========"
+puts n.tables.values.map {|t| "#{t.tabname} => #{t.schema}"}.sort.join("\n")
+puts "========"
+puts n.t_rules.map{|r| r.orig_src}.join("\n")
+puts "========"
+puts n.t_depends.inspected
+exit
 n.sbuf <+ [[5, 1], [6, 1], [7, 2]]
 n.node <+ [["foo", 1], ["bar", 1], ["baz", 2]]
 n.tick
 
 puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
-puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
+#puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
 
 n.send_ack <+ [[5, "foo"], [5, "bar"], [6, "foo"]]
 n.tick
 
 puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
-puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
+#puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
 
 n.seal_node_epoch <+ [[1]]
 n.tick
 
 puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
-puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
+#puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
 
 n.send_ack <+ [[7, "baz"]]
 n.tick
 
 puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
-puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
+#puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
 
 n.seal_node_epoch <+ [[2]]
 n.tick
 
 puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
-puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
+#puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
 
 n.seal_sbuf_epoch <+ [[1]]
 n.tick
 
 puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
-puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
+#puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
 
 n.seal_sbuf_epoch <+ [[2]]
 n.tick
 
 puts "MISSING: #{n.sbuf_node_missing.to_a.inspect}"
-puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
+#puts "RECLAIM: sbuf = #{n.sbuf_reclaim.to_a.inspect}; node = #{n.node_reclaim.to_a.inspect}"
 
 n.tick
 

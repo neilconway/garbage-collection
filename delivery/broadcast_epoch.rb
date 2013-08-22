@@ -37,6 +37,7 @@ rlist.each(&:run_bg)
 r_addrs = rlist.map(&:ip_port)
 
 s = BroadcastEpoch.new(opts)
+puts s.t_rules.map{|r| r.orig_src}.join("\n")
 s.run_bg
 s.sync_do {
   s.node <+ [[r_addrs.first, "first"]]
@@ -46,6 +47,21 @@ s.sync_do {
 }
 
 sleep 2
+
+s.sync_do {
+  puts "Buffered messages: #{s.sbuf.to_a.size}"
+  puts "Missing: #{s.sbuf_node_missing.to_a.inspect}"
+  puts "Joinbuf: #{s.sbuf_node_joinbuf.to_a.inspect}"
+  s.seal_node_epoch <+ [["first"]]
+}
+
+s.sync_do
+
+sleep 1
+
+s.sync_do {
+  puts "Buffered messages: #{s.sbuf.to_a.size}"
+}
 
 s.stop
 rlist.each(&:stop)
