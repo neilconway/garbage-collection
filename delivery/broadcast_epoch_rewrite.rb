@@ -28,7 +28,7 @@ class BroadcastEpochRewrite
     chn <~ ((sbuf * node).pairs(:epoch => :epoch) {|m,n| [n.addr] + m}).notin(chn_approx)
     rbuf <= chn.payloads
 
-    chn_ack <~ chn {|c| [c.source_address] + c}
+    chn_ack <~ chn {|c| [c.source_addr] + c}
     chn_approx <= chn_ack.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}

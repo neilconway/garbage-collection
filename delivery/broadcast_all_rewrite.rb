@@ -25,7 +25,7 @@ class BroadcastAllRewrite
     chn <~ ((log * node).pairs {|m,n| n + m}).notin(chn_approx)
     log <= chn.payloads
 
-    chn_ack <~ chn {|c| [c.source_address] + c}
+    chn_ack <~ chn {|c| [c.source_addr] + c}
     chn_approx <= chn_ack.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}

@@ -63,7 +63,7 @@ class CausalDict
   end
 
   bloom :read_path do
-    read_buf <= req_chn {|r| [r.id, r.key, r.deps, r.source_address]}
+    read_buf <= req_chn {|r| [r.id, r.key, r.deps, r.source_addr]}
     read_pending <= read_buf.notin(read_response, :id => :id)
     read_dep <= read_pending.flat_map {|r| r.deps.map {|d| [r.id, d]}}
     missing_read_dep <= read_dep.notin(safe_log, :dep => :id)
