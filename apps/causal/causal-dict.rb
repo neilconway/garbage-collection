@@ -86,6 +86,8 @@ class CausalDict
   end
 
   bloom :read_path do
+    # XXX: Intuitively there should be a cleaner way to write this. We'd like to
+    # say that "read_pending is the delta between read_response and read_buf".
     read_buf <= req_chn {|r| [r.id, r.key, r.deps, r.source_addr]}
     read_pending <= read_buf.notin(read_response, :id => :id)
     read_dep <= read_pending.flat_map {|r| r.deps.map {|d| [r.id, d]}}
