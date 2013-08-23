@@ -18,6 +18,7 @@ class CausalClient
 
   bloom do
     req_chn <~ read_req
+    stdio <~ resp_chn {|r| ["CLIENT: #{r.key} => #{r.val} (#{r.id})"]}
   end
 end
 
@@ -93,6 +94,11 @@ class CausalDict
     read_response <+ (safe_read * view).pairs(:key => :key) {|r,v| [r.src_addr, r.id, r.key, v.val]}
     resp_chn <~ read_response
   end
+
+  def print_view
+    puts "View @ #{port}:"
+    puts view.map {|v| "\t#{v.key} => #{v.val}"}.join("\n")
+  end
 end
 
 ports = (1..3).map {|i| i + 10001}
@@ -100,42 +106,26 @@ addrs = ports.map {|p| "localhost:#{p}"}
 rlist = ports.map {|p| CausalDict.new(:ip => "localhost", :port => p, :channel_stats => true)}
 rlist.each do |r|
   r.node <+ addrs.map {|a| [a]}
-  r.run_bg
+  r.tick
 end
 
 first = rlist.first
-first.sync_do {
-  first.log <+ [[[first.port, 1], 'foo', 'bar', []]]
-}
+first.log <+ [[[first.port, 1], 'foo', 'bar', []]]
 
 last = rlist.last
-
-# XXX: When we send too many messages, responses to the client are not delivered
-# for some reason. Perhaps because the kernel starts dropping UDP packets?
-# last.sync_do {
-#   last.log <+ [[[last.port, 1], 'baz', 'qux', [[first.port, 1]]]]
-# }
-
-# last.sync_do {
-#   last.log <+ [[[last.port, 2], 'baz', 'kkk', []],
-#                [[last.port, 3], 'baz', 'kkk2', [[first.port, 2]]]]
-# }
-
-sleep 1
-
-first.sync_do {
-  puts first.view.map {|v| "#{v.key} => #{v.val} @ #{first.port}"}.sort.inspect
-}
+last.log <+ [[[last.port, 1], 'baz', 'qux', [[first.port, 1]]]]
+last.log <+ [[[last.port, 2], 'baz', 'kkk', []],
+             [[last.port, 3], 'baz', 'kkk2', [[first.port, 2]]]]
 
 c = CausalClient.new(:channel_stats => true)
-c.run_bg
-c.sync_do {
-  c.read_req <+ [[last.ip_port, [c.port, 1], 'foo', [[first.port, 1]]]]
-}
+c.tick
+c.read_req <+ [[last.ip_port, [c.port, 1], 'foo', [[first.port, 1]]]]
+c.tick
 
-last.sync_do
+4.times { rlist.each(&:tick); sleep 0.3; c.tick }
 
-sleep 2
+first.print_view
+last.print_view
 
 c.stop
 rlist.each(&:stop)
