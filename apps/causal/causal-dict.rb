@@ -21,6 +21,28 @@ class CausalClient
   end
 end
 
+# Places where we would like to apply RCE:
+#   (1) read_req => read_chn
+#   (2) (node * log) => chn
+#   (3) read_resp => resp_chn
+#
+# Places where we would like to apply RSE:
+#   (1) read_req.notin(read_chn_approx) (post-RCE)
+#   (2) (node * log).notin(chn_approx) (post-RCE)
+#   (3) read_resp.notin(resp_chn_approx) (post-RCE)
+#   (4) safe_log.notin(dominated)
+#   (5) read_buf.notin(read_response)
+#
+# Places where we would like to apply notin compression:
+#   (1) read_chn_approx (post-RCE)
+#   (2) chn_approx (post-RCE)
+#   (3) resp_chn_approx (post-RCE)
+#   (4) read_response
+#       => This is a little tricky: the intuition is that once a response has
+#          been generated and sent to the client, we only need to keep around
+#          enough information so that the negation against read_buf can be
+#          performed. So this is like a combination of normal notin compression
+#          and RSE.
 class CausalDict
   include Bud
   include ReadProtocol
