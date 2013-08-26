@@ -43,12 +43,12 @@ class ReplDict
   end
 
   bloom do
+    chn <~ (node * log).pairs {|n,l| n + l}
+    log <= chn.payloads
+
     ins_ops <= log {|l| [l.key, l.val] if l.op_type == INSERT_OP}
     del_ops <= log {|l| [l.key] if l.op_type == DELETE_OP}
     view <= ins_ops.notin(del_ops, :key => :key)
-
-    chn <~ (node * log).pairs {|n,l| n + l}
-    log <= chn.payloads
   end
 end
 
