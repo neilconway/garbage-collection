@@ -48,6 +48,7 @@ class CausalDict
 
     # Client-side read state
     table :read_req, req_chn.schema
+    table :read_result, resp_chn.schema
 
     # Server-side read state
     table :read_buf, [:id] => [:key, :deps, :src_addr]
@@ -83,14 +84,14 @@ class CausalDict
     read_pending <= read_buf.notin(read_resp, :id => :id)
     read_dep <= read_pending.flat_map {|r| r.deps.map {|d| [r.id, d]}}
     missing_read_dep <= read_dep.notin(safe_log, :dep => :id)
-    safe_read <= read_buf.notin(missing_read_dep, :id => :id)
+    safe_read <= read_pending.notin(missing_read_dep, :id => :id)
     read_resp <+ (safe_read * view).pairs(:key => :key) {|r,v| [r.src_addr, r.id, r.key, v.val]}
     resp_chn <~ read_resp
   end
 
   bloom :read_client do
     req_chn <~ read_req
-    stdio <~ resp_chn {|r| ["CLIENT: #{r.key} => #{r.val} (#{r.id})"]}
+    read_result <= resp_chn
   end
 
   def print_view
@@ -126,7 +127,8 @@ c.tick
 first.print_view
 last.print_view
 
-puts "# of stored client-side requests: #{c.read_req.to_a.size}"
+puts "# of stored requests @ client: #{c.read_req.to_a.size}"
+puts "# of stored responses @ client: #{c.read_result.to_a.size}"
 puts "# of buffered read requests @ server: #{last.read_buf.to_a.size}"
 puts "# of stored read responses @ server: #{last.read_resp.to_a.size}"
 puts "# of log entries @ server: #{last.log.to_a.size}"
