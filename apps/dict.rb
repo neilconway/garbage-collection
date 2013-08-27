@@ -35,11 +35,11 @@ class ReplDict
 
   state do
     sealed :node, [:addr]
-    table :log, [:id] => [:op_type, :key, :val]
     channel :chn, [:@addr, :id] => [:op_type, :key, :val]
+    table :log, [:id] => [:op_type, :key, :val]
+    table :ins_ops, [:key] => [:val]
+    table :del_ops, [:key]
     scratch :view, [:key] => [:val]
-    scratch :ins_ops, [:key] => [:val]
-    scratch :del_ops, [:key]
   end
 
   bloom do
@@ -57,24 +57,25 @@ addrs = ports.map {|p| "localhost:#{p}"}
 rlist = ports.map {|p| ReplDict.new(:ip => "localhost", :port => p)}
 rlist.each do |r|
   r.node <+ addrs.map {|a| [a]}
-  r.run_bg
+  r.tick
 end
 
 rlist.each_with_index do |r,i|
-  r.sync_do {
-    r.log <+ [[[r.ip_port, 1], INSERT_OP, "foo#{i}", 'bar']]
-  }
+  t = [[r.ip_port, 1], INSERT_OP, "foo#{i}", 'bar']
+  r.log <+ [t]
+  r.tick
 end
 
 r = rlist.first
-r.sync_do {
-  r.log <+ [[[r.ip_port, 2], DELETE_OP, 'foo2']]
-}
+t = [[r.ip_port, 3], DELETE_OP, 'foo2']
+r.log <+ [t]
+r.tick
 
-sleep 2
+8.times { sleep 0.2; rlist.each(&:tick) }
 
-r.sync_do {
-  puts r.view.to_a.inspect
-}
+puts r.view.to_a.inspect
+puts "# of log records: #{r.log.to_a.size}"
+puts "# of ins_ops: #{r.ins_ops.to_a.size}"
+puts "# of del_ops: #{r.del_ops.to_a.size}"
 
 rlist.each(&:stop)
