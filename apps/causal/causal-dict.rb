@@ -32,10 +32,13 @@ class CausalDict
   include Bud
 
   state do
+    # Replication state
     sealed :node, [:addr]
     table :log, [:id] => [:key, :val, :deps]
     channel :chn, [:@addr, :id] => [:key, :val, :deps]
 
+    # Per-replica state for tracking causal dependencies, pending write
+    # operations, and the current KVS view
     scratch :flat_dep, [:id, :dep]
     scratch :missing_dep, flat_dep.schema
     table :safe_log, log.schema
