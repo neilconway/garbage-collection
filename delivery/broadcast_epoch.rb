@@ -16,14 +16,14 @@ class BroadcastEpoch
   include Bud
 
   state do
-    table :node, [:addr, :epoch]        # XXX: s/table/sealed-on-epoch/
+    table :node, [:addr, :epoch]
     table :sbuf, [:id] => [:epoch, :val]
     table :rbuf, sbuf.schema
     channel :chn, [:@addr, :id] => [:epoch, :val]
   end
 
   bloom do
-    chn <~ (sbuf * node).pairs(:epoch => :epoch) {|m,n| [n.addr] + m}
+    chn <~ (node * sbuf).pairs(:epoch => :epoch) {|n,m| [n.addr] + m}
     rbuf <= chn.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
@@ -37,7 +37,6 @@ rlist.each(&:run_bg)
 r_addrs = rlist.map(&:ip_port)
 
 s = BroadcastEpoch.new(opts)
-puts s.t_rules.map{|r| r.orig_src}.join("\n")
 s.run_bg
 s.sync_do {
   s.node <+ [[r_addrs.first, "first"]]
@@ -50,8 +49,8 @@ sleep 2
 
 s.sync_do {
   puts "Buffered messages: #{s.sbuf.to_a.size}"
-  puts "Missing: #{s.sbuf_node_missing.to_a.inspect}"
-  puts "Joinbuf: #{s.sbuf_node_joinbuf.to_a.inspect}"
+  puts "Missing: #{s.node_sbuf_missing.to_a.inspect}"
+  puts "Joinbuf: #{s.node_sbuf_joinbuf.to_a.inspect}"
   s.seal_node_epoch <+ [["first"]]
 }
 

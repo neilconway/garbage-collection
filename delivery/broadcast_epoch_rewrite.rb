@@ -16,19 +16,19 @@ class BroadcastEpochRewrite
   include Bud
 
   state do
-    table :node, [:addr, :epoch]        # XXX: s/table/sealed-on-epoch/
+    table :node, [:addr, :epoch]
     table :sbuf, [:id] => [:epoch, :val]
     table :rbuf, sbuf.schema
     channel :chn, [:@addr, :id] => [:epoch, :val]
-    table :chn_approx, chn.schema
-    channel :chn_ack, [:@sender, :addr, :id] => [:epoch, :val]
+    table :chn_approx, chn.key_cols
+    channel :chn_ack, [:@sender] + chn.key_cols
   end
 
   bloom do
-    chn <~ ((sbuf * node).pairs(:epoch => :epoch) {|m,n| [n.addr] + m}).notin(chn_approx)
+    chn <~ ((node * sbuf).pairs(:epoch => :epoch) {|n,m| [n.addr] + m}).notin(chn_approx, 0 => :addr, 1 => :id)
     rbuf <= chn.payloads
 
-    chn_ack <~ chn {|c| [c.source_addr] + c}
+    chn_ack <~ chn {|c| [c.source_addr, c.addr, c.id]}
     chn_approx <= chn_ack.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
@@ -51,6 +51,21 @@ s.sync_do {
 }
 
 sleep 2
+
+s.sync_do {
+  puts "Buffered messages: #{s.sbuf.to_a.size}"
+  puts "Missing: #{s.node_sbuf_missing.to_a.inspect}"
+  puts "Joinbuf: #{s.node_sbuf_joinbuf.to_a.inspect}"
+  s.seal_node_epoch <+ [["first"]]
+}
+
+s.sync_do
+
+sleep 1
+
+s.sync_do {
+  puts "Buffered messages: #{s.sbuf.to_a.size}"
+}
 
 s.stop
 rlist.each(&:stop)

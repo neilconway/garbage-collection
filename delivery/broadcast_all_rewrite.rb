@@ -17,15 +17,15 @@ class BroadcastAllRewrite
     sealed :node, [:addr]
     table :log, [:id] => [:val]
     channel :chn, [:@addr, :id] => [:val]
-    table :chn_approx, chn.schema
-    channel :chn_ack, [:@sender, :addr, :id] => [:val]
+    table :chn_approx, chn.key_cols
+    channel :chn_ack, [:@sender] + chn.key_cols
   end
 
   bloom do
-    chn <~ ((log * node).pairs {|m,n| n + m}).notin(chn_approx)
+    chn <~ ((node * log).pairs {|n,m| n + m}).notin(chn_approx, 0 => :addr, 1 => :id)
     log <= chn.payloads
 
-    chn_ack <~ chn {|c| [c.source_addr] + c}
+    chn_ack <~ chn {|c| [c.source_addr, c.addr, c.id]}
     chn_approx <= chn_ack.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}

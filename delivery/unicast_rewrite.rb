@@ -8,15 +8,15 @@ class UnicastRewrite
     channel :chn, [:id] => [:@addr, :val]
     table :sbuf, chn.schema
     table :rbuf, chn.schema
-    table :chn_approx, chn.schema
-    channel :chn_ack, [:@sender, :id] => [:addr, :val]
+    table :chn_approx, chn.key_cols
+    channel :chn_ack, [:@sender] + chn.key_cols
   end
 
   bloom do
-    chn  <~ sbuf.notin(chn_approx)
+    chn  <~ sbuf.notin(chn_approx, 0 => :id)
     rbuf <= chn
 
-    chn_ack <~ chn {|c| [c.source_addr] + c}
+    chn_ack <~ chn {|c| [c.source_addr, c.id]}
     chn_approx <= chn_ack.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}

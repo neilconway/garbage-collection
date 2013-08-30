@@ -11,15 +11,15 @@ class BroadcastFixedRewrite
     table :sbuf, [:id] => [:val]
     channel :chn, [:@addr, :id] => [:val]
     table :rbuf, sbuf.schema
-    table :chn_approx, chn.schema
-    channel :chn_ack, [:@sender, :addr, :id] => [:val]
+    table :chn_approx, chn.key_cols
+    channel :chn_ack, [:@sender] + chn.key_cols
   end
 
   bloom do
-    chn  <~ ((sbuf * node).pairs {|m,n| n + m}).notin(chn_approx)
+    chn  <~ ((sbuf * node).pairs {|m,n| n + m}).notin(chn_approx, 0 => :addr, 1 => :id)
     rbuf <= chn.payloads
 
-    chn_ack <~ chn {|c| [c.source_addr] + c}
+    chn_ack <~ chn {|c| [c.source_addr, c.addr, c.id]}
     chn_approx <= chn_ack.payloads
 
     stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
