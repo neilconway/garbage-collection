@@ -30,5 +30,9 @@ s.sync_do {
 
 sleep 2
 
+s.sync_do {
+  puts "#{s.port}: sbuf size = #{s.sbuf.to_a.size}"
+}
+
 s.stop
 r.stop
