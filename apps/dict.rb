@@ -11,10 +11,14 @@ DELETE_OP = 2
 # The system consists of a (fixed) set of nodes; each node has a complete copy
 # of the log. Any node can add a new entry to the log, which will then be
 # replicated to all the other nodes. Log entries are uniquely identified and
-# consist of an operation (create/delete), a key, and an optional value (for
-# creations). Log entries are used to construct a dictionary. Each node also
+# consist of an operation (insert/delete), a key, and an optional value (for
+# insertions). Log entries are used to construct a dictionary. Each node also
 # keeps track of the knowledge at every other node; this information is used to
 # reclaim log entries when we know that they have been delivered to all sites.
+#
+# We assume that there is at most one insert for a given key; hence, once an
+# element has been deleted it cannot be reinstated. These semantics are similar
+# to the "2P-Set" CRDT.
 #
 # Our goal is to (a) implement the positive dictionary logic (log broadcast +
 # dictionary construction) (b) automatically infer the logic for both

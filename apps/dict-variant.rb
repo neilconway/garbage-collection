@@ -4,8 +4,7 @@ require 'bud'
 # Slight variant of the ReplicatedDict; here, we assume that deletions identify
 # the ID of their corresponding insert, not the key; hence, if we see two
 # inserts for a given key with different IDs but only one deletion, the key is
-# considered to still be inserted. (This design decision probably corresponds to
-# two different CRDT variants.)
+# considered to still be inserted.
 class ReplDictVariant
   include Bud
 
@@ -44,13 +43,16 @@ rlist.each do |r|
 end
 
 first = rlist.first
+puts first.t_rules.map {|r| r.orig_src}.join("\n")
 first.ins_log <+ [[[first.port, 1], 'foo', 'bar'],
-                  [[first.port, 2], 'baz', 'qux']]
+                  [[first.port, 2], 'foo', 'bar2'],
+                  [[first.port, 3], 'baz', 'qux']]
 
 last = rlist.last
-last.del_log <+ [[[last.port, 1], [first.port, 1]]]
+last.del_log <+ [[[last.port, 1], [first.port, 1]],
+                 [[last.port, 2], [first.port, 2]]]
 
-5.times { rlist.each(&:tick); sleep 0.2 }
+10.times { rlist.each(&:tick); sleep 0.1 }
 
 first.print_view
 last.print_view
