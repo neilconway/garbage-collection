@@ -1,9 +1,6 @@
 require 'rubygems'
 require 'bud'
 
-INSERT_OP = 1
-DELETE_OP = 2
-
 # An implementation of a replicated dictionary that uses reliable broadcast,
 # similar to Wuu & Bernstein ("Efficient Solutions to the Replicated Log and
 # Dictionary Problems", PODC'84).
@@ -30,29 +27,39 @@ DELETE_OP = 2
 #     i.e., we just assume that each message has a unique ID
 # (3) (Possible) we might exchange common knowledge (what W&B call "2DTT") in a
 #     different manner
+# (4) We actually maintain insert and delete logs separately, rather than a
+#     single unified log; this also means the ID sequences used by inserts and
+#     deletes are not shared.
 #
 # TODO:
-# * how to handle/prevent/allow concurrent insertions of the same key?
+# * try to prevent/handle multiple insertions of the same key?
 # * look at different schemes for propagating common knowledge
+#   (=> more efficient ACK'ing protocol, gossip, etc.)
 class ReplDict
   include Bud
 
   state do
     sealed :node, [:addr]
-    channel :chn, [:@addr, :id] => [:op_type, :key, :val]
-    table :log, [:id] => [:op_type, :key, :val]
-    table :ins_ops, [:key] => [:val]
-    table :del_ops, [:key]
-    scratch :view, [:key] => [:val]
+    channel :ins_chn, [:@addr, :id] => [:key, :val]
+    channel :del_chn, [:@addr, :id] => [:key]
+    table :ins_log, [:id] => [:key, :val]
+    table :del_log, [:id] => [:key]
+    scratch :view, ins_log.schema
   end
 
   bloom do
-    chn <~ (node * log).pairs {|n,l| n + l}
-    log <= chn.payloads
+    ins_chn <~ (node * ins_log).pairs {|n,l| n + l}
+    del_chn <~ (node * del_log).pairs {|n,l| n + l}
 
-    ins_ops <= log {|l| [l.key, l.val] if l.op_type == INSERT_OP}
-    del_ops <= log {|l| [l.key] if l.op_type == DELETE_OP}
-    view <= ins_ops.notin(del_ops, :key => :key)
+    ins_log <= ins_chn.payloads
+    del_log <= del_chn.payloads
+
+    view <= ins_log.notin(del_log, :key => :key)
+  end
+
+  def print_view
+    puts "View @ #{port}:"
+    puts view.map {|v| "\t#{v.key} => #{v.val}"}.sort.join("\n")
   end
 end
 
@@ -65,21 +72,18 @@ rlist.each do |r|
 end
 
 rlist.each_with_index do |r,i|
-  t = [[r.ip_port, 1], INSERT_OP, "foo#{i}", 'bar']
-  r.log <+ [t]
+  r.ins_log <+ [[[r.port, 1], "foo#{i}", 'bar']]
   r.tick
 end
 
-r = rlist.first
-t = [[r.ip_port, 3], DELETE_OP, 'foo2']
-r.log <+ [t]
-r.tick
+first = rlist.first
+first.del_log <+ [[[first.port, 1], 'foo2'], [[first.port, 2], 'foo1']]
+first.tick
 
-8.times { sleep 0.2; rlist.each(&:tick) }
+10.times { sleep 0.1; rlist.each(&:tick) }
 
-puts r.view.to_a.inspect
-puts "# of log records: #{r.log.to_a.size}"
-puts "# of ins_ops: #{r.ins_ops.to_a.size}"
-puts "# of del_ops: #{r.del_ops.to_a.size}"
+puts first.print_view
+puts "# of ins_log: #{first.ins_log.to_a.size}"
+puts "# of del_log: #{first.del_log.to_a.size}"
 
 rlist.each(&:stop)

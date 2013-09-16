@@ -56,7 +56,6 @@ last.del_log <+ [[[last.port, 1], [first.port, 1]],
 
 first.print_view
 last.print_view
-
 puts "# of insert log records: #{first.ins_log.to_a.size}"
 puts "# of delete log records: #{first.del_log.to_a.size}"
 
