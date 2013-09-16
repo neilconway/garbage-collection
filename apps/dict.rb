@@ -27,9 +27,9 @@ require 'bud'
 #     i.e., we just assume that each message has a unique ID
 # (3) (Possible) we might exchange common knowledge (what W&B call "2DTT") in a
 #     different manner
-# (4) We actually maintain insert and delete logs separately, rather than a
-#     single unified log; this also means the ID sequences used by inserts and
-#     deletes are not shared.
+# (4) We maintain insert and delete logs separately, rather than a single
+#     unified log; this also means the ID sequences used by inserts and deletes
+#     are not shared
 #
 # TODO:
 # * try to prevent/handle multiple insertions of the same key?
