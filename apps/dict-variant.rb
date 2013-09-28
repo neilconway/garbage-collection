@@ -43,7 +43,6 @@ rlist.each do |r|
 end
 
 first = rlist.first
-puts first.t_rules.map {|r| r.orig_src}.join("\n")
 first.ins_log <+ [[[first.port, 1], 'foo', 'bar'],
                   [[first.port, 2], 'foo', 'bar2'],
                   [[first.port, 3], 'baz', 'qux']]

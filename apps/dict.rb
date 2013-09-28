@@ -83,7 +83,7 @@ first.tick
 10.times { sleep 0.1; rlist.each(&:tick) }
 
 puts first.print_view
-puts "# of ins_log: #{first.ins_log.to_a.size}"
-puts "# of del_log: #{first.del_log.to_a.size}"
+puts "# of insert log records: #{first.ins_log.to_a.size}"
+puts "# of delete log records: #{first.del_log.to_a.size}"
 
 rlist.each(&:stop)
