@@ -4,12 +4,21 @@ require 'bud'
 VOTE_ABORT = "abort"
 VOTE_COMMIT = "commit"
 
-# Assumptions:
-#   * fixed set of voters
+# An implementation of two-phase commit (both the coordinator and voter
+# agents). The coordinator has a fixed set of voters and a variable set of
+# transaction; it asks all the voters for a commit/abort decision on each
+# transaction.
+#
+# We accumulate the following state:
+#   * set of initiated XIDs in "xact"
+#   * set of votes in "vote_log"
+#   * RCE-created buffers to avoid duplicate coord => voter msgs
+#   * RCE-created buffers to avoid duplicate voter => coord msgs
 class TwoPhaseCommit
   include Bud
 
   state do
+    # Coordinator state
     sealed :voter, [:addr]
     channel :vote_req, [:@addr, :xid, :coord]
     channel :vote_resp, [:@addr, :vote_addr, :xid] => [:vote]
@@ -22,12 +31,14 @@ class TwoPhaseCommit
     scratch :missing_commit, [:xid]
 
     # Voter state
+    table :req_log, vote_req.schema
     sealed :xact_status, [:xid] => [:status]
   end
 
   bloom do
     vote_req <~ (voter * xact).pairs {|v,x| [v.addr, x.xid, ip_port]}
-    vote_resp <~ (vote_req * xact_status).pairs(:xid => :xid) do |r,s|
+    req_log <= vote_req
+    vote_resp <~ (req_log * xact_status).pairs(:xid => :xid) do |r,s|
       [r.coord, r.addr, s.xid, s.status]
     end
     vote_log <= vote_resp.payloads
