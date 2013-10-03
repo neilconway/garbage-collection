@@ -30,7 +30,7 @@ class RequestResponder
     resp_log <= (need_resp * state).pairs(:key => :key) do |r,s|
       r + [s.val]
     end
-    did_resp <= resp_log {|r| [r.id]}
+    did_resp <+ resp_log {|r| [r.id]}
   end
 
   bloom :client do
@@ -39,12 +39,12 @@ class RequestResponder
   end
 
   def print_resp
-    puts "Client-side responses:"
+    puts "Responses at client:"
     puts read_resp.map {|r| "\t#{r.key} => #{r.val}"}.sort.join("\n")
   end
 end
 
-opts = { :channel_stats => true, :disable_rce => true, :disable_rse => true }
+opts = { :channel_stats => false, :disable_rce => false, :disable_rse => false }
 nodes = Array.new(2) { RequestResponder.new(opts) }
 nodes.each(&:tick)
 
