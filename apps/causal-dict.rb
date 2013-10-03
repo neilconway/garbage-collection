@@ -67,6 +67,17 @@ class CausalDict
   end
 
   bloom :check_deps do
+    # Compute "safe" log entries; a log entry is safe if all of its dependencies
+    # are safe. (This has a cycle through negation but it is harmless: as new
+    # entries are moved into safe_log, missing_dep might shrink, which would
+    # cause safe_log to increase, and so on.)
+    #
+    # When can we discard entries from the log? Intuitively, once a log entry
+    # has been delivered to all nodes and its dependencies have been satisfied,
+    # it isn't useful any more and can be reclaimed. That is, entries in "log"
+    # are just buffered termporarily, until their dependencies have been
+    # satisfied; once that has happened, they are no longer useful and can be
+    # discarded.
     flat_dep <= log.flat_map {|l| l.deps.map {|d| [l.id, d]}}
     missing_dep <= flat_dep.notin(safe_log, :dep => :id)
     safe_log <+ log.notin(missing_dep, :id => :id)
