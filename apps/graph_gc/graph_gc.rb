@@ -23,14 +23,14 @@ class GraphGC
   end
 
   bloom do
-    create_obj_chn <~ (node * create_obj).pairs {|n, c| [n.addr, c.id, c.obj_val] }
-    create_obj <= create_obj_chn { |c| [c.id, c.obj_val] }
+    create_obj_chn <~ (node * create_obj).pairs {|n, c| n + c }
+    create_obj <= create_obj_chn.payloads
 
-    create_ref_chn <~ (node * create_ref).pairs {|n, c| [n.addr, c.ref, c.id] }
-    create_ref <= create_ref_chn { |c| [c.ref, c.id] }
+    create_ref_chn <~ (node * create_ref).pairs {|n, c| n + c }
+    create_ref <= create_ref_chn.payloads
 
-    delete_ref_chn <~ (node * delete_ref).pairs {|n, d| [n.addr, d.ref] }
-    delete_ref <= delete_ref_chn { |d| [d.ref] }
+    delete_ref_chn <~ (node * delete_ref).pairs {|n, d| n + d }
+    delete_ref <= delete_ref_chn.payloads
 
     references <= create_ref.notin(delete_ref, :ref => :ref)
     tombstones <= create_obj.notin(references, :id => :id)
@@ -49,7 +49,7 @@ class GraphGC
   end
 
   def print_tombstones
-    puts "Tombstones @ #{port}"
+    puts "tombstones @ #{port}"
     puts tombstones.map {|v| "\t#{v.id} => #{v.obj_val}"}.sort.join("\n")
   end
 end
@@ -70,8 +70,7 @@ end
 
 first = rlist.first
 first.create_ref <+ [["reference5", "1"]]
-first.tick
-first.tick
+2.times { first.tick }
 first.delete_ref <+ [["reference1"], ["reference5"]]
 first.tick
 
