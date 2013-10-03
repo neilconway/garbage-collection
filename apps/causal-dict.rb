@@ -24,10 +24,9 @@ require 'bud'
 #          performed. So this is like a combination of normal notin compression
 #          and RSE.
 #
-# XXX: It would make sense to split the client-side code into a separate class,
-# and move the read channel state into a shared module. However, the current
-# analysis is per-class, so this would prevent doing RCE/RSE on the read
-# protocol.
+# It would make sense to split the client code into a separate class and move
+# the read channel state into a shared module. However, the current analysis is
+# per-class, so this would prevent doing RCE/RSE on the read protocol.
 class CausalDict
   include Bud
 
@@ -68,6 +67,17 @@ class CausalDict
   end
 
   bloom :check_deps do
+    # Compute "safe" log entries; a log entry is safe if all of its dependencies
+    # are safe. (This has a cycle through negation but it is harmless: as new
+    # entries are moved into safe_log, missing_dep might shrink, which would
+    # cause safe_log to increase, and so on.)
+    #
+    # When can we discard entries from the log? Intuitively, once a log entry
+    # has been delivered to all nodes and its dependencies have been satisfied,
+    # it isn't useful any more and can be reclaimed. That is, entries in "log"
+    # are just buffered termporarily, until their dependencies have been
+    # satisfied; once that has happened, they are no longer useful and can be
+    # discarded.
     flat_dep <= log.flat_map {|l| l.deps.map {|d| [l.id, d]}}
     missing_dep <= flat_dep.notin(safe_log, :dep => :id)
     safe_log <+ log.notin(missing_dep, :id => :id)
@@ -81,8 +91,8 @@ class CausalDict
   end
 
   bloom :read_server do
-    # XXX: Intuitively there should be a cleaner way to write this. We'd like to
-    # say that "read_pending is the delta between read_resp and read_buf".
+    # XXX: there should be a cleaner way to write this. We'd like to say that
+    # "read_pending is the delta between read_resp and read_buf".
     read_buf <= req_chn {|r| [r.id, r.key, r.deps, r.source_addr]}
     read_pending <= read_buf.notin(read_resp, :id => :id)
     read_dep <= read_pending.flat_map {|r| r.deps.map {|d| [r.id, d]}}
@@ -103,7 +113,7 @@ class CausalDict
   end
 end
 
-opts = { :channel_stats => true }
+opts = { :channel_stats => false }
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "localhost:#{p}"}
 rlist = ports.map {|p| CausalDict.new(opts.merge(:ip => "localhost", :port => p))}
@@ -112,6 +122,14 @@ rlist.each do |r|
   r.tick
 end
 
+# Writes:
+#   (W1) foo -> bar, deps={}
+#   (W2) baz -> qux, {W1}
+#   (W3) baz -> kkk, {}
+#   (W4) baz -> kkk2, {W5}
+#
+# Reads:
+#   (1) foo, {W1}
 first = rlist.first
 first.log <+ [[[first.port, 1], 'foo', 'bar', []]]
 
@@ -125,10 +143,11 @@ c.tick
 c.read_req <+ [[last.ip_port, [c.port, 1], 'foo', [[first.port, 1]]]]
 c.tick
 
-4.times { rlist.each(&:tick); sleep 0.3; c.tick }
+15.times { rlist.each(&:tick); sleep 0.1; c.tick }
 
 first.print_view
 last.print_view
+puts "READ RESULT @ client: #{c.read_result.map {|r| "#{r.key} => #{r.val}"}.inspect}"
 
 puts "# of stored requests @ client: #{c.read_req.to_a.size}"
 puts "# of stored responses @ client: #{c.read_result.to_a.size}"
