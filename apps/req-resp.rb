@@ -44,10 +44,11 @@ class RequestResponder
   end
 end
 
-s = RequestResponder.new(:port => 5555, :channel_stats => true)
+opts = { :channel_stats => true, :disable_rce => true, :disable_rse => true }
+s = RequestResponder.new(opts.merge(:port => 5555, :dump_rewrite => true))
 s.state <+ [["foo1", "bar"], ["foo2", "baz"]]
 
-c = RequestResponder.new(:port => 5556, :channel_stats => true)
+c = RequestResponder.new(opts.merge(:port => 5556))
 c.read_req <+ [[s.ip_port, c.ip_port, 1, "foo1"],
                [s.ip_port, c.ip_port, 2, "foo2"]]
 
