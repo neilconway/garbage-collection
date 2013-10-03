@@ -45,14 +45,15 @@ class RequestResponder
 end
 
 opts = { :channel_stats => true, :disable_rce => true, :disable_rse => true }
-s = RequestResponder.new(opts.merge(:port => 5555, :dump_rewrite => true))
+nodes = Array.new(2) { RequestResponder.new(opts) }
+nodes.each(&:tick)
+
+s, c = nodes
 s.state <+ [["foo1", "bar"], ["foo2", "baz"]]
 
-c = RequestResponder.new(opts.merge(:port => 5556))
 c.read_req <+ [[s.ip_port, c.ip_port, 1, "foo1"],
                [s.ip_port, c.ip_port, 2, "foo2"]]
 
-nodes = [s, c]
 10.times { nodes.each(&:tick); sleep(0.1); }
 
 c.print_resp
