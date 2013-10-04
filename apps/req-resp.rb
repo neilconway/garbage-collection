@@ -5,11 +5,11 @@ class RequestResponse
   include Bud
 
   state do
-    channel :req_chn, [:@addr, :client, :id, :key]
-    channel :resp_chn, [:@addr, :id, :key] => [:val]
+    channel :req_chn, [:@addr, :client, :id] => [:key]
+    channel :resp_chn, [:@addr, :id] => [:key, :val]
 
-    table :req_log, [:client, :id, :key]
-    table :resp_log, [:client, :id, :key, :val]
+    table :req_log, [:client, :id] => [:key]
+    table :resp_log, [:client, :id] => [:key, :val]
     table :did_resp, [:id]
 
     scratch :need_resp, req_log.schema
