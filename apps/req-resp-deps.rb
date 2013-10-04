@@ -1,19 +1,22 @@
 require 'rubygems'
 require 'bud'
 
-class RequestResponse
+class RequestResponseDeps
   include Bud
 
   state do
-    channel :req_chn, [:@addr, :client, :id] => [:key]
+    channel :req_chn, [:@addr, :client, :id] => [:key, :deps]
     channel :resp_chn, [:@addr, :id] => [:key, :val]
 
-    table :req_log, [:client, :id] => [:key]
+    table :req_log, [:client, :id] => [:key, :deps]
     table :resp_log, [:client, :id] => [:key, :val]
-    table :did_resp, req_log.key_cols
+    table :did_resp, [:client, :id]
     table :state
 
     scratch :need_resp, req_log.schema
+    scratch :flat_dep, [:client, :id, :dep]
+    scratch :missing_dep, flat_dep.schema
+    scratch :do_resp, req_log.schema
 
     # Client-side state
     table :read_req, req_chn.schema
@@ -25,8 +28,11 @@ class RequestResponse
     resp_chn <~ resp_log
 
     need_resp <= req_log.notin(did_resp, :client => :client, :id => :id)
-    resp_log <= (need_resp * state).outer(:key => :key) do |r,s|
-      r + [s.val || "MISSING"]
+    flat_dep <= need_resp {|r| r.deps.map {|d| [r.client, r.id, d]}}
+    missing_dep <= flat_dep.notin(state, :dep => :key)
+    do_resp <= need_resp.notin(missing_dep, :client => :client, :id => :id)
+    resp_log <= (do_resp * state).pairs(:key => :key) do |r,s|
+      [r.client, r.id, r.key, s.val]
     end
     did_resp <+ resp_log {|r| [r.client, r.id]}
   end
@@ -44,15 +50,14 @@ end
 
 opts = { :channel_stats => false, :print_rules => false,
          :disable_rce => false, :disable_rse => false }
-nodes = Array.new(2) { RequestResponse.new(opts) }
+nodes = Array.new(2) { RequestResponseDeps.new(opts) }
 nodes.each(&:tick)
 
 s, c = nodes
 s.state <+ [["foo1", "bar"], ["foo2", "baz"]]
 
-c.read_req <+ [[s.ip_port, c.ip_port, 1, "foo1"],
-               [s.ip_port, c.ip_port, 2, "foo2"],
-               [s.ip_port, c.ip_port, 3, "foo3"]]
+c.read_req <+ [[s.ip_port, c.ip_port, 1, "foo1", ["foo2"]],
+               [s.ip_port, c.ip_port, 2, "foo2", ["foo99"]]]
 
 10.times { nodes.each(&:tick); sleep(0.1) }
 
