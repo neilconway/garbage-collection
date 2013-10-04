@@ -10,11 +10,10 @@ class RequestResponse
 
     table :req_log, [:client, :id] => [:key]
     table :resp_log, [:client, :id] => [:key, :val]
-    table :did_resp, [:id]
+    table :did_resp, [:client, :id]
+    table :state
 
     scratch :need_resp, req_log.schema
-
-    table :state
 
     # Client-side state
     table :read_req, req_chn.schema
@@ -25,11 +24,11 @@ class RequestResponse
     req_log <= req_chn.payloads
     resp_chn <~ resp_log
 
-    need_resp <= req_log.notin(did_resp, :id => :id)
+    need_resp <= req_log.notin(did_resp, :client => :client, :id => :id)
     resp_log <= (need_resp * state).outer(:key => :key) do |r,s|
       r + [s.val || "MISSING"]
     end
-    did_resp <+ resp_log {|r| [r.id]}
+    did_resp <+ resp_log {|r| [r.client, r.id]}
   end
 
   bloom :client do
