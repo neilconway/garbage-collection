@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'bud'
 
-class RequestResponder
+class RequestResponse
   include Bud
 
   state do
@@ -44,8 +44,9 @@ class RequestResponder
   end
 end
 
-opts = { :channel_stats => false, :disable_rce => false, :disable_rse => false }
-nodes = Array.new(2) { RequestResponder.new(opts) }
+opts = { :channel_stats => false, :print_rules => false,
+         :disable_rce => false, :disable_rse => false }
+nodes = Array.new(2) { RequestResponse.new(opts) }
 nodes.each(&:tick)
 
 s, c = nodes
