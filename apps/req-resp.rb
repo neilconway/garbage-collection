@@ -26,9 +26,8 @@ class RequestResponse
     resp_chn <~ resp_log
 
     need_resp <= req_log.notin(did_resp, :id => :id)
-    # TODO: handle missing keys
-    resp_log <= (need_resp * state).pairs(:key => :key) do |r,s|
-      r + [s.val]
+    resp_log <= (need_resp * state).outer(:key => :key) do |r,s|
+      r + [s.val || "MISSING"]
     end
     did_resp <+ resp_log {|r| [r.id]}
   end
@@ -53,7 +52,8 @@ s, c = nodes
 s.state <+ [["foo1", "bar"], ["foo2", "baz"]]
 
 c.read_req <+ [[s.ip_port, c.ip_port, 1, "foo1"],
-               [s.ip_port, c.ip_port, 2, "foo2"]]
+               [s.ip_port, c.ip_port, 2, "foo2"],
+               [s.ip_port, c.ip_port, 3, "foo3"]]
 
 10.times { nodes.each(&:tick); sleep(0.1); }
 
