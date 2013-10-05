@@ -84,13 +84,6 @@ class CausalDict
     flat_dep <= log.flat_map {|l| l.deps.map {|d| [l.id, d]}}
     missing_dep <= flat_dep.notin(safe_log, :dep => :id)
     safe_log <+ log.notin(missing_dep, :id => :id)
-
-    # Simpler: assume a single dependency per log entry
-    safe_log <= (log * safe_log).lefts(:dep => :id)
-
-    # With negation:
-    missing_dep <= log.notin(safe_log, :)
-    safe_log <= log.notin(missing_dep)
   end
 
   bloom :active_view do
