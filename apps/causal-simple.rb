@@ -19,7 +19,7 @@ class CausalStore
     in_progress <= log.notin(done, :id => :id)
     flat_dep <= in_progress.flat_map {|l| l.deps.map {|d| [l.id, d]}}
     missing_dep <= flat_dep.notin(done, :dep => :id)
-    safe_log <+ log.notin(missing_dep, :id => :id)
+    safe_log <+ in_progress.notin(missing_dep, :id => :id)
     done <= safe_log {|l| [l.id]}
   end
 
