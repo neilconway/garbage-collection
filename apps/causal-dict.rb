@@ -1,19 +1,22 @@
 require 'rubygems'
 require 'bud'
 
-# Places where we would like to apply RCE:
+# RCE works here:
 #   (1) read_req => read_chn
 #   (2) (node * log) => chn
 #   (3) read_resp => resp_chn
 #
-# Places where we would like to apply RSE:
+# RSE works here:
 #   (1) read_req.notin(read_chn_approx) (post-RCE)
-#   (2) (node * log).notin(chn_approx) (post-RCE)
-#   (3) read_resp.notin(resp_chn_approx) (post-RCE)
-#   (4) safe_log.notin(dominated)
-#   (5) read_buf.notin(read_resp)
+#   (2) read_resp.notin(resp_chn_approx) (post-RCE)
+#   (3) read_buf.notin(read_resp)
 #
-# Places where we would like to apply notin compression:
+# RSE _should_ work here but does not yet:
+#   (1) (node * log).notin(chn_approx) (post-RCE)
+#   (2) log.notin(missing_dep)
+#   (3) safe_log.notin(dominated)
+#
+# Notin compression _should_ work here but does not yet:
 #   (1) read_chn_approx (post-RCE)
 #   (2) chn_approx (post-RCE)
 #   (3) resp_chn_approx (post-RCE)
