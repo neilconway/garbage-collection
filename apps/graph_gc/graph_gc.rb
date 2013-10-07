@@ -30,13 +30,14 @@ class GraphGC
     create_obj <= create_obj_chn.payloads
     create_ref <= create_obj {|c| ["orig_ref#{c.id}", c.id, 'original_reference']}
     create_ref_chn <~ (node * create_ref).pairs {|n, c| n + c }
-    all_refs <= create_ref { |c| c }
+    all_refs <= create_ref
     
     duplicate_ref_chn <~ (node * duplicate_ref).pairs {|n, d| n + d }
 
-    # Only add a reference if the ref we are duplicating from is active
-    # This means that we can only add references when other references exist
-    # So once there are no longer active references for an object, we can't create new references.
+    # Only add a reference if the ref we are duplicating from is active. This
+    # means that we can only add references when other references exist. So once
+    # there are no longer active references for an object, we can't create new
+    # references.
     all_refs <= (duplicate_ref_chn * references).pairs(:other_ref => :ref) { |c, r| [c.ref, c.id, r.ref] }
 
     delete_ref_chn <~ (node * delete_ref).pairs {|n, d| n + d }
