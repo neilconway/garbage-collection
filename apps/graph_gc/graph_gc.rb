@@ -34,9 +34,9 @@ class GraphGC
     
     duplicate_ref_chn <~ (node * duplicate_ref).pairs {|n, d| n + d }
 
-    # Only add a reference if the ref we are dupicating from is active
-    # This means that we can only add references when references exist
-    # So once references for an object reach 0, we can no longer create references.
+    # Only add a reference if the ref we are duplicating from is active
+    # This means that we can only add references when other references exist
+    # So once there are no longer active references for an object, we can't create new references.
     all_refs <= (duplicate_ref_chn * references).pairs(:other_ref => :ref) { |c, r| [c.ref, c.id, r.ref] }
 
     delete_ref_chn <~ (node * delete_ref).pairs {|n, d| n + d }
@@ -80,6 +80,8 @@ first.duplicate_ref <+ [["reference6", "1", "orig_ref1"]]
 first.duplicate_ref <+ [["reference7", "1"]]
 2.times { first.tick }
 first.delete_ref <+ [["reference6"], ["orig_ref1"]]
+# reference8 should not be added.
+first.duplicate_ref <+ [["reference8", "1", "orig_ref1"]]
 first.tick
 
 
