@@ -10,37 +10,46 @@ class GraphGC
   state do
     sealed :node, [:addr]
     scratch :objects, [:id] => [:obj_val]
-    scratch :references, [:ref] => [:id]
+    scratch :references, [:ref] => [:id, :other_ref]
     scratch :tombstones, objects.schema 
     
     table :create_obj, [:id] => [:obj_val]
-    table :create_ref, [:ref] => [:id]
+    table :create_ref, [:ref] => [:id, :other_ref]
+    table :duplicate_ref, [:ref] => [:id, :other_ref]
+    table :all_refs, create_ref.schema
     table :delete_ref, [:ref]
     
     channel :create_obj_chn, [:@addr, :id] => [:obj_val]
-    channel :create_ref_chn, [:@addr, :ref] => [:id]
+    channel :create_ref_chn, [:@addr, :ref] => [:id, :other_ref]
+    channel :duplicate_ref_chn, [:@addr, :ref] => [:id, :other_ref]
     channel :delete_ref_chn, [:@addr, :ref] 
   end
 
   bloom do
     create_obj_chn <~ (node * create_obj).pairs {|n, c| n + c }
     create_obj <= create_obj_chn.payloads
-
+    create_ref <= create_obj {|c| ["orig_ref#{c.id}", c.id, 'original_reference']}
     create_ref_chn <~ (node * create_ref).pairs {|n, c| n + c }
-    create_ref <= create_ref_chn.payloads
+    all_refs <= create_ref { |c| c }
+    
+    duplicate_ref_chn <~ (node * duplicate_ref).pairs {|n, d| n + d }
+
+    # Only add a reference if the ref we are dupicating from is active
+    # This means that we can only add references when references exist
+    # So once references for an object reach 0, we can no longer create references.
+    all_refs <= (duplicate_ref_chn * references).pairs(:other_ref => :ref) { |c, r| [c.ref, c.id, r.ref] }
 
     delete_ref_chn <~ (node * delete_ref).pairs {|n, d| n + d }
     delete_ref <= delete_ref_chn.payloads
 
-    references <= create_ref.notin(delete_ref, :ref => :ref)
+    references <= all_refs.notin(delete_ref, :ref => :ref)
     tombstones <= create_obj.notin(references, :id => :id)
-    # Should garbage collect objects in tombstones from create_obj, but doesn't.
     objects <= create_obj.notin(tombstones, :id => :id)
   end
 
   def print_references
     puts "references @ #{port}:"
-    puts references.map { |v| "\t#{v.ref} => #{v.id}"}.sort.join("\n")
+    puts references.map { |v| "\t#{v.ref} => #{v.id}, #{v.other_ref}"}.sort.join("\n")
   end
 
   def print_objects
@@ -62,17 +71,17 @@ rlist.each do |r|
   r.tick
 end
 
-rlist.each_with_index do |r,i|
-  r.create_obj <+ [["#{i}", "object#{i}"]]
-  r.create_ref <+ [["reference#{i}", "#{i}"]]
-  r.tick
-end
-
 first = rlist.first
-first.create_ref <+ [["reference5", "1"]]
+first.create_obj <+ [["1", "object1"], ["2", "object2"]]
+# reference5 should not be added.
+first.duplicate_ref <+ [["reference5", "1", "ref0"]]
+first.duplicate_ref <+ [["reference6", "1", "orig_ref1"]]
+# reference7 should not be added.
+first.duplicate_ref <+ [["reference7", "1"]]
 2.times { first.tick }
-first.delete_ref <+ [["reference1"], ["reference5"]]
+first.delete_ref <+ [["reference6"], ["orig_ref1"]]
 first.tick
+
 
 10.times { sleep 0.1; rlist.each(&:tick) }
 
@@ -80,7 +89,7 @@ puts first.print_tombstones
 puts first.print_references
 puts first.print_objects
 puts "# of created object records: #{first.create_obj.to_a.size}"
-puts "# of created reference records: #{first.create_ref.to_a.size}"
+puts "# of created reference records: #{first.all_refs.to_a.size}"
 puts "# of deleted reference records: #{first.delete_ref.to_a.size}"
 
 rlist.each(&:stop)
