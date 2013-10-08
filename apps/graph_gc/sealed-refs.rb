@@ -5,7 +5,7 @@ class SealedRefGc
   include Bud
 
   state do
-    table :obj, [:id] => [:val]
+    sealed :obj, [:id] => [:val]
     sealed :ref, [:id] => [:name, :obj_id]
     table :del_ref, [:id] => [:del_id]
 
