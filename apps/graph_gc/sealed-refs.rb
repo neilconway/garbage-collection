@@ -9,13 +9,11 @@ class SealedRefGc
     sealed :ref, [:id] => [:name, :obj_id]
     table :del_ref, [:id] => [:del_id]
 
-    scratch :live_ref, ref.schema
-    scratch :view, [:name, :val]
+    scratch :view, [:ref_id, :name, :val]
   end
 
   bloom do
-    live_ref <= ref.notin(del_ref, :id => :del_id)
-    view <= (live_ref * obj).pairs(:obj_id => :id) {|r,o| [r.name, o.val]}
+    view <= ((ref * obj).pairs(:obj_id => :id) {|r,o| [r.id, r.name, o.val]}).notin(del_ref, 0 => :del_id)
   end
 
   def print_view
