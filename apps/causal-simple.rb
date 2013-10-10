@@ -22,20 +22,17 @@ class CausalStore
     safe_log <+ in_progress.notin(missing_dep, :id => :id)
     done <= safe_log {|l| [l.id]}
   end
-
-  def print_live
-    # puts "Live objects:"
-    # puts live.map {|l| "\t#{l.id} => #{l.key}"}.sort
-  end
 end
 
-s = CausalStore.new
+s = CausalStore.new(:print_rules => true)
 s.tick
 s.print_live
 
 s.log <+ [[1, "bar", [5]], [2, "foo", []]]
 3.times { s.tick }
-s.print_live
+
+s.log <+ [[5, "baz", [2]]]
+4.times { s.tick }
 
 puts "# of log entries: #{s.log.to_a.size}"
 puts "# of safe_log entries: #{s.safe_log.to_a.size}"
