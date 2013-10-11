@@ -1,32 +1,6 @@
 require 'rubygems'
 require 'bud'
 
-# RCE works here:
-#   (1) read_req => read_chn
-#   (2) (node * log) => chn
-#   (3) read_resp => resp_chn
-#
-# RSE works here:
-#   (1) read_req.notin(read_chn_approx) (post-RCE)
-#   (2) read_resp.notin(resp_chn_approx) (post-RCE)
-#   (3) read_buf.notin(read_resp)
-#
-# RSE _should_ work here but does not yet:
-#   (1) (node * log).notin(chn_approx) (post-RCE)
-#   (2) log.notin(missing_dep)
-#   (3) safe_log.notin(dominated)
-#
-# Notin compression _should_ work here but does not yet:
-#   (1) read_chn_approx (post-RCE)
-#   (2) chn_approx (post-RCE)
-#   (3) resp_chn_approx (post-RCE)
-#   (4) read_resp
-#       => This is a little tricky: the intuition is that once a response has
-#          been generated and sent to the client, we only need to keep around
-#          enough information so that the negation against read_buf can be
-#          performed. So this is like a combination of normal notin compression
-#          and RSE.
-#
 # It would make sense to split the client code into a separate class and move
 # the read channel state into a shared module. However, the current analysis is
 # per-class, so this would prevent doing RCE/RSE on the read protocol.
@@ -121,6 +95,10 @@ class CausalDict
     puts "View @ #{port}:"
     puts view.map {|v| "\t#{v.key} => #{v.val}"}.sort.join("\n")
   end
+
+  def id(i)
+    [port, i]
+  end
 end
 
 opts = { :channel_stats => false }
@@ -142,17 +120,17 @@ end
 # Reads:
 #   (1) foo, {W1}
 first = rlist.first
-first.log <+ [[[first.port, 1], 'foo', 'bar', []]]
+first.log <+ [[first.id(1), 'foo', 'bar', []]]
 
 last = rlist.last
-last.log <+ [[[last.port, 1], 'baz', 'qux', [[first.port, 1]]]]
-last.log <+ [[[last.port, 2], 'baz', 'kkk', []],
-             [[last.port, 3], 'baz', 'kkk2', [[last.port, 2]]],
-             [[last.port, 4], 'baz', 'kkk3', [[last.port, 3], [last.port, 5]]]]
+last.log <+ [[last.id(1), 'baz', 'qux', [first.id(1)]]]
+last.log <+ [[last.id(2), 'baz', 'kkk', []],
+             [last.id(3), 'baz', 'kkk2', [last.id(2)]],
+             [last.id(4), 'baz', 'kkk3', [last.id(3), last.id(5)]]]
 
 c = CausalDict.new(opts)
 c.tick
-c.read_req <+ [[last.ip_port, [c.port, 1], 'foo', [[first.port, 1]]]]
+c.read_req <+ [[last.ip_port, c.id(1), 'foo', [first.id(1)]]]
 c.tick
 
 15.times { rlist.each(&:tick); sleep 0.1; c.tick }
