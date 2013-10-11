@@ -10,9 +10,8 @@ class BroadcastCausal
     channel :chn, [:@addr, :id] => [:val, :deps]
 
     table :safe_log, log.schema
-    table :done, [:id]
 
-    scratch :in_progress, log.schema
+    scratch :pending, log.schema
     scratch :flat_dep, [:id, :dep]
     scratch :missing_dep, flat_dep.schema
   end
@@ -21,11 +20,10 @@ class BroadcastCausal
     chn <~ (node * log).pairs {|n,l| n + l}
     log <= chn.payloads
 
-    in_progress <= log.notin(done, :id => :id)
-    flat_dep <= in_progress.flat_map {|l| l.deps.map {|d| [l.id, d]}}
-    missing_dep <= flat_dep.notin(done, :dep => :id)
-    safe_log <+ in_progress.notin(missing_dep, :id => :id)
-    done <= safe_log {|l| [l.id]}
+    pending <= log.notin(safe_log, :id => :id)
+    flat_dep <= pending.flat_map {|l| l.deps.map {|d| [l.id, d]}}
+    missing_dep <= flat_dep.notin(safe_log, :dep => :id)
+    safe_log <+ pending.notin(missing_dep, :id => :id)
   end
 
   def id(i)
