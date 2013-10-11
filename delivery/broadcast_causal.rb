@@ -27,25 +27,29 @@ class BroadcastCausal
     safe_log <+ in_progress.notin(missing_dep, :id => :id)
     done <= safe_log {|l| [l.id]}
   end
+
+  def id(i)
+    "#{port}:#{i}"
+  end
 end
 
 opts = {}
 ports = (1..3).map {|i| i + 10001}
-addrs = ports.map {|p| "127.0.0.1:#{p}"}
 rlist = ports.map {|p| BroadcastCausal.new(opts.merge(:port => p))}
+addrs = ports.map {|p| "127.0.0.1:#{p}"}
 rlist.each do |r|
   r.node <+ addrs.map {|a| [a]}
   r.tick
 end
 
 first = rlist.first
-first.log <+ [[[first.port, 1], 'foo',
-               [[first.port, 2], [first.port, 10]]],
-              [[first.port, 2], 'bar', []],
-              [[first.port, 3], 'baz', [first.port, 2]]]
+first.log <+ [[first.id(1), 'foo',
+               [first.id(2), first.id(10)]],
+              [first.id(2), 'bar', []],
+              [first.id(3), 'baz', [first.id(2)]]]
 first.tick
 
-30.times { rlist.each(&:tick); sleep(0.1) }
+10.times { rlist.each(&:tick); sleep(0.1) }
 
 puts "Safe log: #{first.safe_log.to_a.sort}"
 puts "# of log: #{first.log.to_a.size}"
