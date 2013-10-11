@@ -36,15 +36,17 @@ class CausalDict
   state do
     # Replication state
     sealed :node, [:addr]
-    table :log, [:id] => [:key, :val, :deps]
     channel :chn, [:@addr, :id] => [:key, :val, :deps]
+    table :log, [:id] => [:key, :val, :deps]
 
     # Per-replica state for tracking causal dependencies, pending write
     # operations, and the current KVS view
+    table :safe_log, log.schema
+    table :safe, [:id]
+    table :dominated, [:id]
+    scratch :pending, log.schema
     scratch :flat_dep, [:id, :dep]
     scratch :missing_dep, flat_dep.schema
-    table :safe_log, log.schema
-    scratch :dominated, log.schema
     scratch :view, log.schema
 
     # State for handling read requests
@@ -62,6 +64,7 @@ class CausalDict
     scratch :missing_read_dep, read_dep.schema
     scratch :safe_read, read_buf.schema
     table :read_resp, resp_chn.schema
+    table :done_read, [:id]
   end
 
   bloom :replication do
@@ -71,9 +74,10 @@ class CausalDict
 
   bloom :check_deps do
     # Compute "safe" log entries; a log entry is safe if all of its dependencies
-    # are safe. (This has a cycle through negation but it is harmless: as new
-    # entries are moved into safe_log, missing_dep might shrink, which would
-    # cause safe_log to increase, and so on.)
+    # are safe. (This has a cycle through negation but we use <+ to temporally
+    # stratify it. If we added support for constraint stratification, we could
+    # probably use the fact that dependencies are a partial order to constraint
+    # stratify.)
     #
     # When can we discard entries from the log? Intuitively, once a log entry
     # has been delivered to all nodes and its dependencies have been satisfied,
@@ -81,27 +85,30 @@ class CausalDict
     # are just buffered termporarily, until their dependencies have been
     # satisfied; once that has happened, they are no longer useful and can be
     # discarded.
-    flat_dep <= log.flat_map {|l| l.deps.map {|d| [l.id, d]}}
-    missing_dep <= flat_dep.notin(safe_log, :dep => :id)
-    safe_log <+ log.notin(missing_dep, :id => :id)
+    pending <= log.notin(safe, :id => :id)
+    flat_dep <= pending.flat_map {|l| l.deps.map {|d| [l.id, d]}}
+    missing_dep <= flat_dep.notin(safe, :dep => :id)
+    safe_log <+ pending.notin(missing_dep, :id => :id)
+    safe <= safe_log {|l| [l.id]}
   end
 
   bloom :active_view do
     dominated <= (safe_log * safe_log).pairs(:key => :key) do |w1,w2|
-      w2 if w1 != w2 and w1.deps.include? w2.id
+      [w2.id] if w1 != w2 and w1.deps.include? w2.id
     end
-    view <= safe_log.notin(dominated)
+    view <= safe_log.notin(dominated, :id => :id)
   end
 
   bloom :read_server do
     # XXX: there should be a cleaner way to write this. We'd like to say that
     # "read_pending is the delta between read_resp and read_buf".
     read_buf <= req_chn {|r| [r.id, r.key, r.deps, r.source_addr]}
-    read_pending <= read_buf.notin(read_resp, :id => :id)
+    read_pending <= read_buf.notin(done_read, :id => :id)
     read_dep <= read_pending.flat_map {|r| r.deps.map {|d| [r.id, d]}}
-    missing_read_dep <= read_dep.notin(safe_log, :dep => :id)
+    missing_read_dep <= read_dep.notin(safe, :dep => :id)
     safe_read <= read_pending.notin(missing_read_dep, :id => :id)
-    read_resp <+ (safe_read * view).pairs(:key => :key) {|r,v| [r.src_addr, r.id, r.key, v.val]}
+    read_resp <= (safe_read * view).pairs(:key => :key) {|r,v| [r.src_addr, r.id, r.key, v.val]}
+    done_read <+ read_resp {|r| [r.id]}
     resp_chn <~ read_resp
   end
 
@@ -129,7 +136,8 @@ end
 #   (W1) foo -> bar, deps={}
 #   (W2) baz -> qux, {W1}
 #   (W3) baz -> kkk, {}
-#   (W4) baz -> kkk2, {W5}
+#   (W4) baz -> kkk2, {W3}
+#   (W5) baz -> kkk3, {W4,W6}
 #
 # Reads:
 #   (1) foo, {W1}
@@ -139,7 +147,8 @@ first.log <+ [[[first.port, 1], 'foo', 'bar', []]]
 last = rlist.last
 last.log <+ [[[last.port, 1], 'baz', 'qux', [[first.port, 1]]]]
 last.log <+ [[[last.port, 2], 'baz', 'kkk', []],
-             [[last.port, 3], 'baz', 'kkk2', [[first.port, 2]]]]
+             [[last.port, 3], 'baz', 'kkk2', [[last.port, 2]]],
+             [[last.port, 4], 'baz', 'kkk3', [[last.port, 3], [last.port, 5]]]]
 
 c = CausalDict.new(opts)
 c.tick
