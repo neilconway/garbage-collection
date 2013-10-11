@@ -67,6 +67,11 @@ class CausalDict
   end
 
   bloom :active_view do
+    # A safe_log entry e is dominated when we have another safe_log entry for
+    # the same key that happens-after e.
+    #
+    # XXX: This is wrong! We need to check the transitive closure of the
+    # dependency graph.
     dominated <= (safe_log * safe_log).pairs(:key => :key) do |w1,w2|
       [w2.id] if w1 != w2 and w1.deps.include? w2.id
     end
