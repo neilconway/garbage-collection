@@ -13,23 +13,23 @@ class CausalDict
     channel :chn, [:@addr, :id] => [:key, :val, :deps]
     table :log, [:id] => [:key, :val, :deps]
 
-    # Per-replica state for tracking causal dependencies, pending write
-    # operations, and the current KVS view
+    # State for tracking causal dependencies and pending write operations
     table :safe_log, log.schema
     table :safe, [:id]
-    table :dominated, [:id]
     scratch :pending, log.schema
     scratch :flat_dep, [:id, :dep]
     scratch :missing_dep, flat_dep.schema
+
+    # State for computing the current KVS view
+    table :dominated, [:id]
+    scratch :dep, [:from, :to]
+    scratch :dep_tc, [:from, :to]
+    scratch :conflict_w, [:w1, :w2]
     scratch :view, log.schema
 
-    # State for handling read requests
+    # Protocol for read request/response
     channel :req_chn, [:@addr, :id] => [:key, :deps]
     channel :resp_chn, [:@addr, :id, :key, :val]
-
-    # Client-side read state
-    table :read_req, req_chn.schema
-    table :read_result, resp_chn.schema
 
     # Server-side read state
     table :read_buf, [:id] => [:key, :deps, :src_addr]
@@ -39,6 +39,10 @@ class CausalDict
     scratch :safe_read, read_buf.schema
     table :read_resp, resp_chn.schema
     table :done_read, [:id]
+
+    # Client-side read state
+    table :read_req, req_chn.schema
+    table :read_result, resp_chn.schema
   end
 
   bloom :replication do
@@ -67,14 +71,18 @@ class CausalDict
   end
 
   bloom :active_view do
-    # A safe_log entry e is dominated when we have another safe_log entry for
-    # the same key that happens-after e.
-    #
-    # XXX: This is wrong! We need to check the transitive closure of the
-    # dependency graph.
-    dominated <= (safe_log * safe_log).pairs(:key => :key) do |w1,w2|
-      [w2.id] if w1 != w2 and w1.deps.include? w2.id
+    # A safe_log entry e for key k is dominated if there is another safe_log
+    # entry e' for k s.t. e happens-before e'. We only need to retain
+    # non-dominated versions in the view. To compute the happens-before
+    # relation, we take the transitive closure of the dependency graph.
+    dep <= safe_log.flat_map {|l| l.deps.map {|d| [d, l.id]}}
+    dep_tc <= dep
+    dep_tc <= (dep * dep_tc).pairs(:to => :from) {|d,t| [d.from, t.to]}
+
+    conflict_w <= (safe_log * safe_log).pairs(:key => :key) do |w1,w2|
+      [w1.id, w2.id] if w1 != w2
     end
+    dominated <= (conflict_w * dep_tc).lefts(:w1 => :from) {|c| [c.w1]}
     view <= safe_log.notin(dominated, :id => :id)
   end
 
@@ -106,7 +114,7 @@ class CausalDict
   end
 end
 
-opts = { :channel_stats => false }
+opts = { :channel_stats => false, :disable_rse => false }
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "localhost:#{p}"}
 rlist = ports.map {|p| CausalDict.new(opts.merge(:ip => "localhost", :port => p))}
@@ -120,7 +128,12 @@ end
 #   (W2) baz -> qux, {W1}
 #   (W3) baz -> kkk, {}
 #   (W4) baz -> kkk2, {W3}
-#   (W5) baz -> kkk3, {W4,W6}
+#   (W5) baz -> kkk3, {W2,W4}
+#   (W6) qux -> xxx, {W5}
+#   (W7) baz -> kkk4, {W6}
+#
+# The final view should contain W1, W6, and W7. Note that W7 causally follows
+# W5, even though W5 is not one of W7's (direct) dependencies.
 #
 # Reads:
 #   (1) foo, {W1}
@@ -128,10 +141,12 @@ first = rlist.first
 first.log <+ [[first.id(1), 'foo', 'bar', []]]
 
 last = rlist.last
-last.log <+ [[last.id(1), 'baz', 'qux', [first.id(1)]]]
-last.log <+ [[last.id(2), 'baz', 'kkk', []],
-             [last.id(3), 'baz', 'kkk2', [last.id(2)]],
-             [last.id(4), 'baz', 'kkk3', [last.id(3), last.id(5)]]]
+last.log <+ [[last.id(2), 'baz', 'qux', [first.id(1)]]]
+last.log <+ [[last.id(3), 'baz', 'kkk', []],
+             [last.id(4), 'baz', 'kkk2', [last.id(3)]],
+             [last.id(5), 'baz', 'kkk3', [last.id(2), last.id(4)]],
+             [last.id(6), 'qux', 'xxx', [last.id(5)]],
+             [last.id(7), 'baz', 'kkk4', [last.id(6)]]]
 
 c = CausalDict.new(opts)
 c.tick
