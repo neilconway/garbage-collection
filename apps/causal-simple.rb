@@ -10,16 +10,16 @@ class CausalStore
     table :log, [:id] => [:key, :deps]
     table :safe_log, log.schema
     table :done, [:id]
-    scratch :in_progress, log.schema
+    scratch :pending, log.schema
     scratch :flat_dep, [:id, :dep]
     scratch :missing_dep, flat_dep.schema
   end
 
   bloom do
-    in_progress <= log.notin(done, :id => :id)
-    flat_dep <= in_progress.flat_map {|l| l.deps.map {|d| [l.id, d]}}
+    pending <= log.notin(done, :id => :id)
+    flat_dep <= pending.flat_map {|l| l.deps.map {|d| [l.id, d]}}
     missing_dep <= flat_dep.notin(done, :dep => :id)
-    safe_log <+ in_progress.notin(missing_dep, :id => :id)
+    safe_log <+ pending.notin(missing_dep, :id => :id)
     done <= safe_log {|l| [l.id]}
   end
 end
