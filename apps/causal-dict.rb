@@ -57,12 +57,10 @@ class CausalDict
     # probably use the fact that dependencies are a partial order to constraint
     # stratify.)
     #
-    # When can we discard entries from the log? Intuitively, once a log entry
-    # has been delivered to all nodes and its dependencies have been satisfied,
-    # it isn't useful any more and can be reclaimed. That is, entries in "log"
-    # are just buffered termporarily, until their dependencies have been
-    # satisfied; once that has happened, they are no longer useful and can be
-    # discarded.
+    # We can discard an entry from "log" when it has been delivered to all nodes
+    # and its dependencies have been satisfied.
+    #
+    # XXX: Tracking the set of "safe" IDs as well as "safe_log" is unfortunate.
     pending <= log.notin(safe, :id => :id)
     flat_dep <= pending.flat_map {|l| l.deps.map {|d| [l.id, d]}}
     missing_dep <= flat_dep.notin(safe, :dep => :id)
