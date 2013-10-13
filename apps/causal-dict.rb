@@ -24,7 +24,7 @@ class CausalDict
     table :dominated, [:id]
     scratch :dep, [:from, :to]
     scratch :dep_tc, [:from, :to]
-    scratch :conflict_w, [:w1, :w2]
+    scratch :conflict, [:id]
     scratch :view, log.schema
 
     # Protocol for read request/response
@@ -77,10 +77,10 @@ class CausalDict
     dep_tc <= dep
     dep_tc <= (dep * dep_tc).pairs(:to => :from) {|d,t| [d.from, t.to]}
 
-    conflict_w <= (safe_log * safe_log).pairs(:key => :key) do |w1,w2|
-      [w1.id, w2.id] if w1 != w2
+    conflict <= (safe_log * safe_log).pairs(:key => :key) do |w1,w2|
+      [w1.id] if w1 != w2
     end
-    dominated <= (conflict_w * dep_tc).lefts(:w1 => :from) {|c| [c.w1]}
+    dominated <= (conflict * dep_tc).lefts(:id => :from)
     view <= safe_log.notin(dominated, :id => :id)
   end
 
