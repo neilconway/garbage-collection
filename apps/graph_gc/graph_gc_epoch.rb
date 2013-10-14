@@ -11,9 +11,6 @@ class EpochGc
     table :ref, [:id] => [:name, :obj_id, :epoch]
     table :del_ref, [:id] => [:del_id]
 
-    table :ins_obj, obj.schema
-    table :ins_ref, ref.schema
-
     channel :obj_chn, [:@addr, :id] => [:val, :epoch]
     channel :ref_chn, [:@addr, :id] => [:name, :obj_id, :epoch]
     channel :del_ref_chn, [:@addr, :id] => [:del_id] 
@@ -24,11 +21,9 @@ class EpochGc
   bloom do
     obj_chn <~ (node * obj).pairs {|n, c| n + c }
     obj <= obj_chn.payloads
-    obj <= ins_obj
-    
+
     ref_chn <~ (node * ref).pairs {|n, c| n + c }
     ref <= ref_chn.payloads
-    ref <= ins_ref
 
     del_ref_chn <~ (node * del_ref).pairs {|n, d| n + d }
     del_ref <= del_ref_chn.payloads
@@ -40,6 +35,11 @@ class EpochGc
     puts "View:"
     puts view.map {|v| "\t#{v.name} => #{v.val}"}
   end
+
+  def print_obj
+    puts "Objs:"
+    puts obj.map {|v| "\t#{v.id} => #{v.val}"}
+  end
 end
 
 ports = (1..3).map {|i| i + 10001}
@@ -49,23 +49,26 @@ rlist.each do |r|
   r.node <+ addrs.map {|a| [a]}
   r.tick
 end
+rlist.each(&:run_bg)
 
 s = rlist.first
-s.ins_obj <+ [[1, 'foo', 'e1'], [2, 'bar', 'e2'], [3, 'baz', 'e2']]
-s.ins_ref <+ [[10, 'k1', 1, 'e1'], [11, 'k1b', 1, 'e1'], [12, 'k2', 2, 'e2']]
+s.obj <+ [[1, 'foo', 'e1'], [2, 'bar', 'e1'], [3, 'xxx', 'e2']]
+s.ref <+ [[10, 'k1', 1, 'e1'], [11, 'k1b', 1, 'e1'], [12, 'k2', 2, 'e1'], [13, 'k3', 3, 'e2']]
 s.tick
 s.print_view
 
 s.del_ref <+ [[1, 10], [2, 12]]
 2.times { s.tick }
-s.seal_ins_obj_epoch <+ [["e1"]]
-s.seal_ins_ref_epoch <+ [["e1"]]
+s.seal_ref_epoch <+ [["e1"]]
 2.times { s.tick }
 s.print_view
-s.seal_ins_obj_epoch <+ [["e2"]]
-s.seal_ins_ref_epoch <+ [["e2"]]
+s.del_ref <+ [[3,13]]
+2.times { s.tick }
+s.seal_ref_epoch <+ [["e2"]]
 2.times {s.tick}
 s.print_view
+s.print_obj
+
 
 
 puts "Size of obj: #{s.obj.to_a.size}"
