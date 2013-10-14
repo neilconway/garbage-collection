@@ -63,7 +63,7 @@ s.seal_ref_epoch <+ [["e1"]]
 2.times { s.tick }
 s.print_view
 s.del_ref <+ [[3,13]]
-2.times { s.tick }
+3.times { s.tick }
 s.seal_ref_epoch <+ [["e2"]]
 2.times {s.tick}
 s.print_view
