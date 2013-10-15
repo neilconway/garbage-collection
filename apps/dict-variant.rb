@@ -43,13 +43,13 @@ rlist.each do |r|
 end
 
 first = rlist.first
-first.ins_log <+ [[[first.port, 1], 'foo', 'bar'],
-                  [[first.port, 2], 'foo', 'bar2'],
-                  [[first.port, 3], 'baz', 'qux']]
+first.ins_log <+ [[first.id(1), 'foo', 'bar'],
+                  [first.id(2), 'foo', 'bar2'],
+                  [first.id(3), 'baz', 'qux']]
 
 last = rlist.last
-last.del_log <+ [[[last.port, 1], [first.port, 1]],
-                 [[last.port, 2], [first.port, 2]]]
+last.del_log <+ [[last.id(1), first.id(1)],
+                 [last.id(2), first.id(2)]]
 
 10.times { rlist.each(&:tick); sleep 0.1 }
 

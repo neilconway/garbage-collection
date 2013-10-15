@@ -106,10 +106,6 @@ class CausalDict
     puts "View @ #{port}:"
     puts view.map {|v| "\t#{v.key} => #{v.val}"}.sort.join("\n")
   end
-
-  def id(i)
-    [port, i]
-  end
 end
 
 opts = { :channel_stats => false, :disable_rse => false }

@@ -39,8 +39,8 @@ end
 
 s = rlist.first
 s.sync_do {
-  s.log <+ [[[s.ip_port, 1], 'foo'],
-            [[s.ip_port, 2], 'bar']]
+  s.log <+ [[s.id(1), 'foo'],
+            [s.id(2), 'bar']]
 }
 
 sleep 4

@@ -72,12 +72,12 @@ rlist.each do |r|
 end
 
 rlist.each_with_index do |r,i|
-  r.ins_log <+ [[[r.port, 1], "foo#{i}", 'bar']]
+  r.ins_log <+ [[r.id(1), "foo#{i}", 'bar']]
   r.tick
 end
 
 first = rlist.first
-first.del_log <+ [[[first.port, 1], 'foo2'], [[first.port, 2], 'foo1']]
+first.del_log <+ [[first.id(1), 'foo2'], [first.id(2), 'foo1']]
 first.tick
 
 10.times { sleep 0.1; rlist.each(&:tick) }
