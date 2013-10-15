@@ -15,13 +15,13 @@ class CausalDict
 
     # State for tracking causal dependencies and pending write operations
     table :safe_log, log.schema
-    table :safe, [:id]
+    range :safe, [:id]
     scratch :pending, log.schema
     scratch :flat_dep, [:id, :dep]
     scratch :missing_dep, flat_dep.schema
 
     # State for computing the current KVS view
-    table :dominated, [:id]
+    range :dominated, [:id]
     scratch :dep, [:from, :to]
     scratch :dep_tc, [:from, :to]
     scratch :conflict, [:id]
@@ -38,7 +38,7 @@ class CausalDict
     scratch :missing_read_dep, read_dep.schema
     scratch :safe_read, read_buf.schema
     table :read_resp, resp_chn.schema
-    table :done_read, [:id]
+    range :done_read, [:id]
 
     # Client-side read state
     table :read_req, req_chn.schema
