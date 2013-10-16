@@ -20,6 +20,13 @@ class BroadcastCausal
     chn <~ (node * log).pairs {|n,l| n + l}
     log <= chn.payloads
 
+    # Note that we can safely reclaim from log once a matching entry appears in
+    # safe_log. This is because (a) safe_log grows over time and is never
+    # deleted from or GC'd (b) all paths downstream of log terminate in
+    # safe_log. If log reached an output interface, we couldn't GC it; whereas
+    # if safe_log was GC'd, we'd need to split safe_log into a set of IDs (range
+    # compressed but not GC'd) and safe_log itself (GC'd), and then reference
+    # the safe-ID collection in the rules below.
     pending <= log.notin(safe_log, :id => :id)
     flat_dep <= pending.flat_map {|l| l.deps.map {|d| [l.id, d]}}
     missing_dep <= flat_dep.notin(safe_log, :dep => :id)
