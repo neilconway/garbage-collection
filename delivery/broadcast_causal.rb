@@ -25,10 +25,6 @@ class BroadcastCausal
     missing_dep <= flat_dep.notin(safe_log, :dep => :id)
     safe_log <+ pending.notin(missing_dep, :id => :id)
   end
-
-  def id(i)
-    "#{port}:#{i}"
-  end
 end
 
 opts = {}
@@ -49,7 +45,7 @@ first.tick
 
 10.times { rlist.each(&:tick); sleep(0.1) }
 
-puts "Safe log: #{first.safe_log.to_a.sort}"
-puts "# of log: #{first.log.to_a.size}"
+puts "# of safe_log: #{first.safe_log.length}"
+puts "# of log: #{first.log.length}"
 
 rlist.each(&:stop)
