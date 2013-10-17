@@ -11,7 +11,6 @@ class ReplDictVariantDeleteRewrite
     table :ins_log, [:id] => [:key, :val]
     table :del_log, [:id] => [:del_id]
     range :seen_ins_id, [:id]
-    range :seen_del_id, [:id]
     scratch :view, ins_log.schema
   end
 
@@ -22,9 +21,9 @@ class ReplDictVariantDeleteRewrite
     seen_ins_id <+ ins_chn {|i| [i.id]}
     ins_log <= ins_chn.payloads.notin(seen_ins_id, :id => :id)
 
-    seen_del_id <+ del_chn {|i| [i.id]}
-    del_log <= del_chn.payloads.notin(seen_del_id, :id => :id)
+    del_log <= del_chn.payloads
 
+    ins_log <- (ins_log * del_log).lefts(:id => :del_id)
     del_log <- (del_log * seen_ins_id).lefts(:del_id => :id)
 
     view <= ins_log.notin(del_log, :id => :del_id)
