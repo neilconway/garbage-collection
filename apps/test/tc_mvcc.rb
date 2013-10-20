@@ -1,4 +1,4 @@
-require './mvcc'
+require_relative '../mvcc'
 gem 'minitest'  
 require 'minitest/autorun'
 
