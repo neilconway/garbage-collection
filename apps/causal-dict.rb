@@ -153,23 +153,17 @@ last.print_view
 puts "READ RESULT @ client: #{c.read_result.map {|r| "#{r.key} => #{r.val}"}.inspect}"
 
 # Check that the state on every replica has converged
+state = [:log, :safe_log, :safe, :dominated, :view]
 rlist.each do |r|
   next if r == first
 
-  if r.log.to_set != first.log.to_set
-    raise "log divergent!"
-  end
+  state.each do |t|
+    r_t = r.tables[t]
+    first_t = first.tables[t]
 
-  if r.safe_log.to_set != first.safe_log.to_set
-    raise "safe_log divergent!"
-  end
-
-  if r.safe.to_set != first.safe.to_set
-    raise "safe divergent!"
-  end
-
-  if r.dominated.to_set != first.dominated.to_set
-    raise "dominated divergent!"
+    if r_t.to_set != first_t.to_set
+      raise "#{t} divergent between #{first.port} and #{r.port}"
+    end
   end
 end
 
