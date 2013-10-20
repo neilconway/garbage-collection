@@ -8,10 +8,7 @@ class TestReplDict < MiniTest::Unit::TestCase
     ports = (1..3).map {|i| i + 10001}
     addrs = ports.map {|p| "localhost:#{p}"}
     rlist = ports.map {|p| ReplDict.new(opts.merge(:ip => "localhost", :port => p))}
-    rlist.each do |r|
-      r.node <+ addrs.map {|a| [a]}
-      r.tick
-    end
+    rlist.each {|r| r.node <+ addrs.map {|a| [a]}}
 
     first = rlist.first
     first.ins_log <+ [[first.id(1), 'foo', 'bar'],
