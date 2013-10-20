@@ -173,6 +173,8 @@ puts "# of buffered read requests @ server: #{last.read_buf.to_a.size}"
 puts "# of stored read responses @ server: #{last.read_resp.to_a.size}"
 puts "# of log entries @ server: #{last.log.to_a.size}"
 puts "# of safe log entries @ server: #{last.safe_log.to_a.size}"
+puts "Physical vs. logical for safe @ server: #{last.safe.physical_size} vs. #{last.safe.length}"
+puts "Physical vs. logical for dominated @ server: #{last.safe.physical_size} vs. #{last.safe.length}"
 
 c.stop
 rlist.each(&:stop)
