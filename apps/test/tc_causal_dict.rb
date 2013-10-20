@@ -8,10 +8,7 @@ class TestCausalDict < MiniTest::Unit::TestCase
     ports = (1..3).map {|i| i + 10001}
     addrs = ports.map {|p| "localhost:#{p}"}
     rlist = ports.map {|p| CausalDict.new(opts.merge(:ip => "localhost", :port => p))}
-    rlist.each do |r|
-      r.node <+ addrs.map {|a| [a]}
-      r.tick
-    end
+    rlist.each {|r| r.node <+ addrs.map {|a| [a]}}
 
     # Writes:
     #   (W1) foo -> bar, deps={} (origin = server 1)
@@ -40,11 +37,10 @@ class TestCausalDict < MiniTest::Unit::TestCase
                  [last.id(7), 'baz', 'kkk4', [last.id(6), last.id(5)]]]
 
     c = CausalDict.new(opts)
-    c.tick
     c.read_req <+ [[last.ip_port, c.id(1), 'foo', [first.id(1)]]]
-    c.tick
 
-    15.times { rlist.each(&:tick); sleep 0.1; c.tick }
+    all_nodes = rlist + [c]
+    15.times { all_nodes.each(&:tick); sleep 0.1 }
 
     check_convergence(rlist)
     assert_equal([].to_set, c.read_req.to_set)
@@ -58,10 +54,13 @@ class TestCausalDict < MiniTest::Unit::TestCase
                     [last.id(6), 'qux', 'xxx', [last.id(5)]],
                     [last.id(7), 'baz', 'kkk4', [last.id(6), last.id(5)]]].to_set,
                    r.safe_log.to_set)
+
+      # We expect 7 logical elements in safe, but we only need to store 2
+      assert_equal(7, r.safe.length)
+      assert_equal(2, r.safe.physical_size)
     end
 
-    c.stop
-    rlist.each(&:stop)
+    all_nodes.each(&:stop)
   end
 
   def check_convergence(rlist)
