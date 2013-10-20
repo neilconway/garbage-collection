@@ -45,6 +45,7 @@ module MultiKeyWrites
     # views
     scratch :live, write_log.schema
     scratch :commit_set, [:aid, :key] => [:val, :dep]
+    scratch :write_version, [:aid] => [:dep]
     scratch :write_seal_event, write.schema
   end
 
@@ -52,7 +53,8 @@ module MultiKeyWrites
     write_seal_event <= (write * write_seal).lefts(:aid => :aid).notin(write_log, :aid => :aid)
     commit_set <= (live * write_seal_event).pairs(:key => :key){|l, e| [e.aid, e.key, e.val, successor(l.dep)]}
     # LUB is max
-    write_log <+ commit_set.group([:aid, :key, :val], max(:dep))
+    write_version <= commit_set.group([:aid], max(:dep))
+    write_log <+ (commit_set * write_version).pairs(:aid => :aid){|c, v| [c.aid, c.key, c.val, v.dep]}
   end
 end
 
