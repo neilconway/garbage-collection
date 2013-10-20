@@ -106,7 +106,7 @@ class CausalDict
   end
 end
 
-opts = { :channel_stats => false, :disable_rse => false }
+opts = { :channel_stats => false, :range_stats => false, :disable_rse => false }
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "localhost:#{p}"}
 rlist = ports.map {|p| CausalDict.new(opts.merge(:ip => "localhost", :port => p))}
@@ -151,6 +151,27 @@ c.tick
 first.print_view
 last.print_view
 puts "READ RESULT @ client: #{c.read_result.map {|r| "#{r.key} => #{r.val}"}.inspect}"
+
+# Check that the state on every replica has converged
+rlist.each do |r|
+  next if r == first
+
+  if r.log.to_set != first.log.to_set
+    raise "log divergent!"
+  end
+
+  if r.safe_log.to_set != first.safe_log.to_set
+    raise "safe_log divergent!"
+  end
+
+  if r.safe.to_set != first.safe.to_set
+    raise "safe divergent!"
+  end
+
+  if r.dominated.to_set != first.dominated.to_set
+    raise "dominated divergent!"
+  end
+end
 
 puts "# of stored requests @ client: #{c.read_req.to_a.size}"
 puts "# of stored responses @ client: #{c.read_result.to_a.size}"
