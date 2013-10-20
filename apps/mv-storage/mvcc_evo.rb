@@ -33,7 +33,6 @@ module SimpleMV
   end
 end
 
-
 module MultiKeyWrites
   include Dependencies
   state do
@@ -53,6 +52,7 @@ module MultiKeyWrites
     write_seal_event <= (write * write_seal).lefts(:aid => :aid).notin(write_log, :aid => :aid)
     commit_set <= (live * write_seal_event).pairs(:key => :key){|l, e| [e.aid, e.key, e.val, successor(l.dep)]}
     # LUB is max
+    # the version # associated with a write is > than the versions of any dependencies.
     write_version <= commit_set.group([:aid], max(:dep))
     write_log <+ (commit_set * write_version).pairs(:aid => :aid){|c, v| [c.aid, c.key, c.val, v.dep]}
   end
@@ -64,17 +64,21 @@ module MultiKeyReads
     # inputs 
     table :prepare, [:aid, :key]
     table :prepare_seal, [:aid]
-    table :read, [:aid, :key]
+    table :read_commit, [:aid]
     # internal state
-    table :prepare_effective, [:aid, :key] => [:val, :dep]
+    table :prepare_effective, [:aid, :key] => [:dep]
     # views 
     scratch :prepare_seal_event, [:aid, :key]
+    scratch :active, prepare_effective.schema
     scratch :read_response, [:aid, :key, :value, :dep]
   end
 
   bloom do
     prepare_seal_event <= (prepare * prepare_seal).lefts(:aid => :aid).notin(prepare_effective, :aid => :aid)
-    prepare_effective <+ (prepare_seal_event * live).pairs(:key => :key){|e, l| [e.aid, e.key, l.val, l.dep]}
-    read_response <= (read * prepare_effective).pairs(:aid => :aid, :key => :key){|r, p| [r.aid, r.key, p.val, p.dep]}
+    prepare_effective <+ (prepare_seal_event * live).pairs(:key => :key){|e, l| [e.aid, e.key, l.dep]}
+    # this syntax doesn't seem legal...
+    active <= prepare_effective.notin(read_commit, :aid => :aid)
+    read_response <= (write_log * active).pairs(:key => :key, :dep => :dep){|l, p| [p.aid, l.key, l.val, l.dep]}
+
   end
 end

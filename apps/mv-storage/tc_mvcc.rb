@@ -75,23 +75,13 @@ class TestMVCCs < Minitest::Test
     m.tick
     m.prepare <+ [[200, "foo"], [200, "peter"]]
     m.prepare_seal <+ [[200]]
-    m.tick
-
-    m.read <+ [[200, 'foo']]
     5.times{ m.tick }
-    assert_equal([[200, 'foo', 'bar', 0]], m.read_response.to_a)
+    assert_equal([[200, 'foo', 'bar', 0], [200, "peter", "thane of glamis", 0]], m.read_response.to_a.sort)
     multi_w_wload(m)
     m.prepare <+ [[300, "banquo"], [300, "peter"]]
     m.prepare_seal <+ [[300]]
-    assert_equal([[200, 'foo', 'bar', 0]], m.read_response.to_a)
-
-    m.read <+ [[200, 'peter']]
-    m.tick
-    assert_equal([[200, 'foo', 'bar', 0], [200, 'peter', 'thane of glamis', 0]], m.read_response.to_a)
+    m.tick; m.tick
     assert_equal([[2, "banquo", "dead but gets kings", 0], [100, 'foo', 'baz', 1], [100, 'peter', 'thane of cawdor', 1]], m.live.to_a.sort)
-
-    m.read <+ [[300, "peter"]]
-    m.tick
-    assert_equal([[200, 'foo', 'bar', 0], [200, 'peter', 'thane of glamis', 0], [300, 'peter', 'thane of cawdor', 1]], m.read_response.to_a)
+    assert_equal([[200, 'foo', 'bar', 0], [200, 'peter', 'thane of glamis', 0], [300, 'peter', 'thane of cawdor', 1], [300, "banquo", "dead but gets kings", 0]], m.read_response.to_a)
   end
 end
