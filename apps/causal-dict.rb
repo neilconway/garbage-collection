@@ -22,9 +22,6 @@ class CausalDict
 
     # State for computing the current KVS view
     range :dominated, [:id]
-    scratch :dep, [:from, :to]
-    scratch :dep_tc, [:from, :to]
-    scratch :conflict, [:id]
     scratch :view, log.schema
 
     # Protocol for read request/response
@@ -70,17 +67,18 @@ class CausalDict
 
   bloom :active_view do
     # A safe_log entry e for key k is dominated if there is another safe_log
-    # entry e' for k s.t. e happens-before e'. We only need to retain
-    # non-dominated versions in the view. To compute the happens-before
-    # relation, we take the transitive closure of the dependency graph.
-    dep <= safe_log.flat_map {|l| l.deps.map {|d| [d, l.id]}}
-    dep_tc <= dep
-    dep_tc <= (dep * dep_tc).pairs(:to => :from) {|d,t| [d.from, t.to]}
-
-    conflict <= (safe_log * safe_log).pairs(:key => :key) do |w1,w2|
-      [w1.id] if w1 != w2
+    # entry e' for k s.t. e happens-before e'. However, implementing this
+    # correctly (w/o any further assumptions) would mean we couldn't safely
+    # garbage collect any dependency metadata, because we might always see a
+    # subsequent write that depends on a earlier part of the dependency
+    # graph. Hence, we make a simplifying assumption: a safe_log entry e for key
+    # k includes a dependency on e', the most recent previous version of k that
+    # the client was aware of. Hence, we can say that a safe_log entry is
+    # dominated if there is another entry for the same key that includes this
+    # entry in its list of dependencies.
+    dominated <= (safe_log * safe_log).pairs(:key => :key) do |w1,w2|
+      [w2.id] if w1 != w2 and w1.deps.include? w2.id
     end
-    dominated <= (conflict * dep_tc).lefts(:id => :from)
     view <= safe_log.notin(dominated, :id => :id)
   end
 
@@ -124,10 +122,11 @@ end
 #   (W4) baz -> kkk2, {W3}
 #   (W5) baz -> kkk3, {W2,W4}
 #   (W6) qux -> xxx, {W5}
-#   (W7) baz -> kkk4, {W6}
+#   (W7) baz -> kkk4, {W6,W5}
 #
-# The final view should contain W1, W6, and W7. Note that W7 causally follows
-# W5, even though W5 is not one of W7's (direct) dependencies.
+# The final view should contain W1, W6, and W7. Note that if we implemented true
+# causal consistency, we could omit the W5 dependency from W7, but that would
+# not yield the correct results.
 #
 # Reads:
 #   (1) foo, {W1}
@@ -140,7 +139,7 @@ last.log <+ [[last.id(3), 'baz', 'kkk', []],
              [last.id(4), 'baz', 'kkk2', [last.id(3)]],
              [last.id(5), 'baz', 'kkk3', [last.id(2), last.id(4)]],
              [last.id(6), 'qux', 'xxx', [last.id(5)]],
-             [last.id(7), 'baz', 'kkk4', [last.id(6)]]]
+             [last.id(7), 'baz', 'kkk4', [last.id(6), last.id(5)]]]
 
 c = CausalDict.new(opts)
 c.tick
