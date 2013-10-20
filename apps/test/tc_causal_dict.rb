@@ -4,7 +4,7 @@ require 'minitest/autorun'
 
 class TestCausalDict < MiniTest::Unit::TestCase
   def test_causal_basic
-    opts = { :channel_stats => false, :range_stats => false, :disable_rse => false }
+    opts = { :quiet => true, :channel_stats => false, :range_stats => false }
     ports = (1..3).map {|i| i + 10001}
     addrs = ports.map {|p| "localhost:#{p}"}
     rlist = ports.map {|p| CausalDict.new(opts.merge(:ip => "localhost", :port => p))}
