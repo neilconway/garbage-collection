@@ -1,40 +1,13 @@
 require 'rubygems'
 require 'bud'
 
-# An implementation of a replicated dictionary that uses reliable broadcast,
-# similar to Wuu & Bernstein ("Efficient Solutions to the Replicated Log and
-# Dictionary Problems", PODC'84).
-#
-# The system consists of a (fixed) set of nodes; each node has a complete copy
-# of the log. Any node can add a new entry to the log, which will then be
-# replicated to all the other nodes. Log entries are uniquely identified and
-# consist of an operation (insert/delete), a key, and an optional value (for
-# insertions). Log entries are used to construct a dictionary. Each node also
-# keeps track of the knowledge at every other node; this information is used to
-# reclaim log entries when we know that they have been delivered to all sites.
-#
-# We assume that there is at most one insert for a given key; hence, once an
-# element has been deleted it cannot be reinstated. These semantics are similar
-# to the "2P-Set" CRDT.
-#
-# Our goal is to (a) implement the positive dictionary logic (log broadcast +
-# dictionary construction) (b) automatically infer the logic for both
-# propagating knowledge about node state and reclaiming log entries.
-#
-# Differences from Wuu & Bernstein:
-# (1) We don't assume that messages from A -> B are delivered in-order
-# (2) We don't explicitly depend on stamping messages with the sender's clock;
-#     i.e., we just assume that each message has a unique ID
-# (3) (Possible) we might exchange common knowledge (what W&B call "2DTT") in a
-#     different manner
-# (4) We maintain insert and delete logs separately, rather than a single
-#     unified log; this also means the ID sequences used by inserts and deletes
-#     are not shared
-#
-# TODO:
-# * try to prevent/handle multiple insertions of the same key?
-# * look at different schemes for propagating common knowledge
-#   (=> more efficient ACK'ing protocol, gossip, etc.)
+# Slight variant of ReplDict; here, we assume that deletions identify the key to
+# be removed, not the ID. Because the "key" column is not a (Bloom) key of the
+# ins_log collection (i.e., we can have multiple inserts with different IDs and
+# the same key), this means we can never discard deletion log entries; moreover,
+# it means that once a key has been deleted it can never be reinstated (since a
+# single deletion is taken to dominate all insertions). This behavior is similar
+# to the 2P-Set CRDT.
 class ReplDict
   include Bud
 
