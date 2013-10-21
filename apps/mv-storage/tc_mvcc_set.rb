@@ -75,10 +75,11 @@ class TestMVCCs < Minitest::Test
     m.tick
     m.prepare <+ [[200, "foo"], [200, "peter"]]
     m.prepare_seal <+ [[200]]
+    m.prepare <+ [[300, "peter"]]
     5.times{ m.tick }
     assert_equal([[200, 'foo', 'bar', [0,1]], [200, "peter", "thane of glamis", [0,2]]], m.read_response.to_a.sort)
     multi_w_wload(m)
-    m.prepare <+ [[300, "banquo"], [300, "peter"]]
+    m.prepare <+ [[300, "banquo"]]
     m.prepare_seal <+ [[300]]
     m.tick; m.tick
     assert_equal([[3, "banquo", "dead but gets kings", [0,3]], [100, 'foo', 'baz', [0,1,2,100]], [100, 'peter', 'thane of cawdor', [0,1,2,100]]], m.live.to_a.sort)
