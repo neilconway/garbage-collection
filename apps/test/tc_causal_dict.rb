@@ -64,6 +64,8 @@ class TestCausalDict < MiniTest::Unit::TestCase
       # We expect 7 logical elements in safe, but we only need to store 2
       assert_equal(7, r.safe.length)
       assert_equal(2, r.safe.physical_size)
+
+      assert_equal([].to_set, r.dominated.to_set)
     end
 
     all_nodes.each(&:stop)
@@ -90,8 +92,9 @@ class TestCausalDict < MiniTest::Unit::TestCase
       assert_equal(10, r.safe.length)
       assert_equal(1, r.safe.physical_size)
 
-      assert_equal(9, r.dominated.length)
-      assert_equal(1, r.dominated.physical_size)
+      assert_equal([[first.id(9), "foo", "bar9", [first.id(8)]]].to_set,
+                   r.safe_log.to_set)
+      assert_equal([].to_set, r.dominated.to_set)
     end
 
     rlist.each(&:stop)

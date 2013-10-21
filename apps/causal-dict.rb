@@ -21,7 +21,7 @@ class CausalDict
     scratch :missing_dep, flat_dep.schema
 
     # State for computing the current KVS view
-    range :dominated, [:id]
+    table :dominated, [:id]
     scratch :view, log.schema
 
     # Protocol for read request/response
