@@ -88,4 +88,36 @@ class TestMVCCs < Minitest::Test
                  [300, 'peter', 'thane of cawdor', [0,1,2,100]]], 
               m.read_response.to_a)
   end
+
+  def test_concurrent_writes
+    s = SimpleWrite.new
+    s.tick
+    s.write <+ [[100, 'foo', 'baz']]
+    assert_raises(Bud::KeyConstraintError){ s.write <+ [[100, 'foo', 'qux']] }
+
+    m = MultiWrite.new
+    m.tick
+    m.write <+ [[100, 'foo', 'baz']]
+    assert_raises(Bud::KeyConstraintError){ m.write <+ [[100, 'foo', 'qux']] }
+  end
+
+  def read_key(inst, key)
+    inst.live.each do |l| 
+      if l.key == key
+        return l
+      end
+    end
+    return nil
+  end
+
+  def test_snapshot_anomaly
+    m = MultiWrite.new
+    m.tick
+    results = {}
+    results['peter'] = read_key(m, 'peter')
+    multi_w_wload(m)
+    results['foo'] = read_key(m, 'foo')
+    assert_equal('thane of glamis', results['peter'].val)
+    assert_equal('baz', results['foo'].val)
+  end
 end
