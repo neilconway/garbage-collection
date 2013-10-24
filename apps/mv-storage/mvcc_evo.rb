@@ -2,13 +2,9 @@ require 'rubygems'
 require 'bud'
 
 module Dependencies
-  def successor(x)
-    x + 1
-  end
-
   bloom do
-    # here, > is just integer inequality
-    live <= write_log.notin(write_log, :key => :key){|r, l| l.dep > r.dep}
+    foo <= write_log
+    live <= write_log.notin(foo, :xid => :prev_xid, :key => :key)
   end
 end
 
@@ -17,19 +13,22 @@ module SimpleMV
   include Dependencies
   state do
     # inputs
-    table :write, [:aid] => [:key, :val]
+    table :write, [:xid] => [:key, :val]
     # internal state
-    table :write_log, [:aid] => [:key, :val, :dep]
+    table :log, [:xid] => [:key, :val, :prev_xid]
     # views
     scratch :write_event, write.schema
     scratch :live, write_log.schema
+    # workaround
+    scratch :foo, write_log.schema
   end
 
   bloom do
-    write_event <= write.notin(write_log, :aid => :aid)
+    write_event <= write.notin(log, :xid => :xid)
     # N.B. there is only ever one row per key in live(); hence the new version
     # can always be simply the successor of the parent version's dependencies.
-    write_log <+ (write_event * live).pairs(:key => :key){|e, l| [e.aid, e.key, e.val, successor(l.dep)]}
+    # assume: keys are already initialized
+    log <+ (write_event * live).pairs(:key => :key){|e, l| [e.xid, e.key, e.val, l.xid]}
   end
 end
 
@@ -37,48 +36,56 @@ module MultiKeyWrites
   include Dependencies
   state do
     # inputs
-    table :write, [:aid, :key] => [:val]
-    table :write_seal, [:aid]
+    table :write, [:xid, :key] => [:val]
+    table :commit, [:xid]
     # internal state
-    table :write_log, [:aid, :key] => [:val, :dep]
+    table :write_log, [:xid, :key] => [:val, :prev_xid]
+    table :commit_log, [:xid] => [:prev_xid]
     # views
+    scratch :last_commit, commit_log.schema
     scratch :live, write_log.schema
-    scratch :commit_set, [:aid, :key] => [:val, :dep]
-    scratch :write_version, [:aid] => [:dep]
-    scratch :write_seal_event, write.schema
+    scratch :write_commit_event, write.schema
+    # constraints
+    scratch :write_commit_constraint, [:key] => [:xid]
+    # workarounds
+    scratch :foo, write_log.schema
+    scratch :commit_foo, commit_log.schema
   end
 
   bloom do
-    write_seal_event <= (write * write_seal).lefts(:aid => :aid).notin(write_log, :aid => :aid)
-    commit_set <= (live * write_seal_event).pairs(:key => :key){|l, e| [e.aid, e.key, e.val, successor(l.dep)]}
-    # LUB is max
-    # the version # associated with a write is > than the versions of any dependencies.
-    write_version <= commit_set.group([:aid], max(:dep))
-    write_log <+ (commit_set * write_version).pairs(:aid => :aid){|c, v| [c.aid, c.key, c.val, v.dep]}
+    # no worky; workaround below
+    # write_seal_event <= (write * write_seal).lefts(:xid => :xid).notin(write_log, :xid => :xid)
+    # test
+    write_commit_event <= (write * commit).pairs(:xid => :xid){|w,s| w}.notin(write_log, 0 => :xid)
+    commit_foo <= commit_log
+    last_commit <= commit_log.notin(commit_foo, :xid => :prev_xid)
+    write_log <+ (write_commit_event * live).pairs(:key => :key){|e, l| [e.xid, e.key, e.val, l.xid]}
+    commit_log <+ (write_commit_event * last_commit).pairs{|e, l| [e.xid, l.xid]}
+  end
+
+  bloom :constraint do
+    write_commit_constraint <= write_commit_event{|e| [e.key, e.xid]}
   end
 end
 
-module MultiKeyReads
+module SimplerMultiKeyReads
   include MultiKeyWrites
   state do
-    # inputs 
-    table :prepare, [:aid, :key]
-    table :prepare_seal, [:aid]
-    table :read_commit, [:aid]
-    # internal state
-    table :prepare_effective, [:aid, :key] => [:dep]
-    # views 
-    scratch :prepare_seal_event, [:aid, :key]
-    scratch :active, prepare_effective.schema
-    scratch :read_response, [:aid, :key, :value, :dep]
+    # input
+    table :read, [:xid, :key]
+    # internal
+    table :pinned_writes, [:reader_xid, :writer_xid, :key, :val, :prev_xid]
+  
+    scratch :read_event, read.schema
+    scratch :read_commit_event, read.schema
+    scratch :read_view, pinned_writes.schema
+
   end
-
   bloom do
-    prepare_seal_event <= (prepare * prepare_seal).lefts(:aid => :aid).notin(prepare_effective, :aid => :aid)
-    prepare_effective <+ (prepare_seal_event * live).pairs(:key => :key){|e, l| [e.aid, e.key, l.dep]}
-    # this syntax doesn't seem legal...
-    active <= prepare_effective.notin(read_commit, :aid => :aid)
-    read_response <= (write_log * active).pairs(:key => :key, :dep => :dep){|l, p| [p.aid, l.key, l.val, l.dep]}
-
+    read_event <= read.notin(commit_log, :xid => :xid)
+    pinned_writes <+ (read_event * live).pairs{|r, l| [r.xid] + l.to_a}
+    read_view <= pinned_writes.notin(commit_log, :reader_xid => :xid)
+    read_commit_event <= (read * commit).pairs(:xid => :xid){|w,s| s}.notin(commit_log, 0 => :xid)
+    commit_log <+ (read_commit_event * last_commit).pairs{|e, l| [e.xid, l.xid]}
   end
 end
