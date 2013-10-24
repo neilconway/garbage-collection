@@ -1,15 +1,17 @@
 require 'rubygems'
 require 'bud'
 
-# Reliable broadcast with a single sender and a dynamic set of receivers. We
-# assume that receiver groups are "sealed" on epoch number -- that is, we learn
-# about all the receivers in a given epoch simultaneously. That means that while
-# new receivers can be added (in new epochs), the membership list of a given
-# epoch is fixed. Moreover, each outbound message is tagged with the epoch to
-# which it should be delivered. Outbound messages for not-yet-known epochs will
-# be buffered until the epoch has been learned; also, new outbound messages for
-# prior epochs can always be learned (and will be delivered correctly), since we
-# don't try to reclaim node information for prior epochs.
+# Reliable broadcast with a single sender and a dynamic set of receivers. Both
+# receivers and messages are divided into epochs; the messages in an epoch
+# cannot be reclaimed until we have a "seal" for the nodes in that epoch. That
+# is, we assume some outside mechanism (typically based on consensus) that
+# determines when a new epoch should begin and seals the new epoch. Similarly,
+# tuples in "node" can be reclaimed if we a given epoch of messages has been
+# sealed.
+#
+# Note that all nodes don't need to learn about seals or new epochs at the same
+# time; outbound messages for as-yet-unknown epochs will be buffered until the
+# epoch has been learned.
 #
 # Note that we don't tolerate sender failure.
 class BroadcastEpoch
