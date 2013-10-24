@@ -112,7 +112,6 @@ class TestMVCCs < Minitest::Test
 
 
     assert_equal([[3, "banquo", "dead but gets kings", 0], [100, "foo", "baz", 1],[100, "peter", "thane of cawdor", 2]], m.live.to_a.sort)
-    m.live.to_a.each{|l| puts "IVE: #{l}"}
     m.commit <+ [[200]]
     m.seal_commit_xid <+ [[200]]
     4.times{m.tick}
