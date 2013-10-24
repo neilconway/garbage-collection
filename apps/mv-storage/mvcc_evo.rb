@@ -15,7 +15,7 @@ module SimpleMV
     # inputs
     table :write, [:xid] => [:key, :val]
     # internal state
-    table :log, [:xid] => [:key, :val, :prev_xid]
+    table :write_log, [:xid] => [:key, :val, :prev_xid]
     # views
     scratch :write_event, write.schema
     scratch :live, write_log.schema
@@ -24,11 +24,11 @@ module SimpleMV
   end
 
   bloom do
-    write_event <= write.notin(log, :xid => :xid)
+    write_event <= write.notin(write_log, :xid => :xid)
     # N.B. there is only ever one row per key in live(); hence the new version
     # can always be simply the successor of the parent version's dependencies.
     # assume: keys are already initialized
-    log <+ (write_event * live).pairs(:key => :key){|e, l| [e.xid, e.key, e.val, l.xid]}
+    write_log <+ (write_event * live).pairs(:key => :key){|e, l| [e.xid, e.key, e.val, l.xid]}
   end
 end
 

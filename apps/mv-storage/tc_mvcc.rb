@@ -37,8 +37,8 @@ class MultiReadWrite
 end
 
 class TestMVCCs < Minitest::Test
-  def Ntest_simple
-    s = SimpleWrite.new(:print_rules => true, :trace => true, :port => 1234)
+  def test_simple
+    s = SimpleWrite.new
     s.tick;s.tick
     assert_equal([[1, 'foo', 'bar', 0], [2, 'peter', 'thane of glamis', 0], [3, "banquo", "dead but gets kings", 0]], s.live.to_a.sort)
     s.write <+ [[100, 'foo', 'baz']]
@@ -79,9 +79,8 @@ class TestMVCCs < Minitest::Test
   end 
 
 
-  def Ntest_multiwrite
-
-    m = MultiWrite.new(:print_rules => true, :trace => true, :port => 1234)
+  def test_multiwrite
+    m = MultiWrite.new
     setup_multiwrite(m)
     m.tick; m.tick
     assert_equal([[1, "foo", "bar", 0],[2, "peter", "thane of glamis", 0], [3, "banquo", "dead but gets kings", 0]], m.live.to_a.sort)
@@ -96,10 +95,11 @@ class TestMVCCs < Minitest::Test
   end
 
   def test_itall
-    m = MultiReadWrite.new(:print_rules => true, :trace => true, :port => 1234)
+    m = MultiReadWrite.new
     setup_multiwrite(m)
+    # pre-write set
     assert_equal([[1, "foo", "bar", 0],[2, "peter", "thane of glamis", 0], [3, "banquo", "dead but gets kings", 0]], m.live.to_a.sort)
-    m.tick
+    #m.tick
     m.read <+ [[200, 'foo',], [200, 'peter']]
     m.tick
     multi_w_wload(m)
@@ -126,20 +126,15 @@ class TestMVCCs < Minitest::Test
 
   end
 
-  def Ntest_concurrent_writes
+  def test_concurrent_writes
     s = SimpleWrite.new
     s.tick
     s.write <+ [[100, 'foo', 'baz']]
     assert_raises(Bud::KeyConstraintError){ s.write <+ [[100, 'foo', 'qux']] }
     s.write <+ [[101, 'foo', 'qux']]
-
-
-    #assert_raises(Bud::KeyConstraintError){ s.tick }
     #s.tick;s.tick
     s.live.each{|l| puts "L : #{l}"}
-    s.pinned_writes.each{|l| puts "L : #{l}"}
   
-    return
 
     m = MultiWrite.new
     m.tick
@@ -156,7 +151,7 @@ class TestMVCCs < Minitest::Test
     return nil
   end
 
-  def Ntest_snapshot_anomaly
+  def test_snapshot_anomaly
     m = MultiWrite.new
     m.tick
     results = {}
