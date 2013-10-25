@@ -7,13 +7,15 @@ class WuuLog
   state do
     sealed :node, [:addr]
     table :log, [:id] => [:val]
-    channel :chn, [:@addr, :id] => [:val]
+    buf_channel :chn, {[:@addr, :id] => [:val]}, true
 
     # A tuple here means that x knows that y knows about message "id". This is
-    # essentially a set-theoretic representation of a matrix clock.
-    table :chn_approx, [:x, :y, :id]
+    # essentially a set-theoretic representation of a matrix clock. Range
+    # compression means this will use O(n^2) space (for n nodes) as we'd hope,
+    # rather than O(mn^2) (m messages), as a naive representation would.
+    range :chn_approx, [:x, :y, :id]
     # Tell node "addr" that node x knows that node y knows about message "id"
-    channel :chn_ack, [:@addr] + chn_approx.schema
+    buf_channel :chn_ack, [:@addr] + chn_approx.schema, true
   end
 
   bloom do
@@ -29,7 +31,9 @@ class WuuLog
     chn_approx <= chn {|c| [c.source_addr, c.source_addr, c.id]}
 
     # When we get a message from X, tell X what we know about the knowledge of
-    # all the nodes
+    # all the nodes. Note that the timing of this message is irrelevant -- i.e.,
+    # we could trigger it based on inbound chn messages, as we do, or else just
+    # send it periodically.
     chn_ack <~ (chn * chn_approx).pairs {|c,l| [c.source_addr] + l}
 
     # Update our local knowledge based on receiving common knowledge from
@@ -50,12 +54,13 @@ end
 
 s = rlist.first
 s.sync_do {
-  s.log <+ [[s.id(1), 'foo'], [s.id(2), 'bar']]
+  s.log <+ [[s.id(1), 'foo'], [s.id(2), 'bar'], [s.id(3), 'baz'], [s.id(4), 'qux'], [s.id(5), 'qux2'], [s.id(6), 'qux3'], [s.id(7), 'qux4'], [s.id(8), 'qux5'], [s.id(9), 'qux6'], [s.id(10), 'qux7']]
 }
 
 sleep 4
 
 rlist.each do |r|
+  r.tick
   r.sync_do {
     puts "#{r.port}: log size = #{r.log.to_a.size}"
   }
