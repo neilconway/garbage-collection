@@ -39,7 +39,7 @@ require 'bud'
 # TODO:
 # * look at different schemes for propagating common knowledge
 #   (=> more efficient ACK'ing protocol, gossip, etc.)
-class ReplDict
+class KvsReplica
   include Bud
 
   state do

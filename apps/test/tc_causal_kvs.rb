@@ -1,14 +1,14 @@
-require_relative '../causal-dict'
+require_relative '../causal-kvs'
 gem 'minitest'  
 require 'minitest/autorun'
 
-class TestCausalDict < MiniTest::Unit::TestCase
+class TestCausalKvs < MiniTest::Unit::TestCase
   @@opts = { :quiet => true, :channel_stats => false, :range_stats => false }
 
   def make_cluster
     ports = (1..3).map {|i| i + 10001}
     addrs = ports.map {|p| "localhost:#{p}"}
-    rlist = ports.map {|p| CausalDict.new(@@opts.merge(:ip => "localhost", :port => p))}
+    rlist = ports.map {|p| CausalKvsReplica.new(@@opts.merge(:ip => "localhost", :port => p))}
     rlist.each {|r| r.node <+ addrs.map {|a| [a]}}
     rlist
   end
@@ -42,7 +42,7 @@ class TestCausalDict < MiniTest::Unit::TestCase
                  [last.id(6), 'qux', 'xxx', [last.id(5)]],
                  [last.id(7), 'baz', 'kkk4', [last.id(6), last.id(5)]]]
 
-    c = CausalDict.new(@@opts)
+    c = CausalKvsReplica.new(@@opts)
     c.read_req <+ [[last.ip_port, c.id(1), 'foo', [first.id(1)]]]
 
     all_nodes = rlist + [c]

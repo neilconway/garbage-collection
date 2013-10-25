@@ -4,7 +4,7 @@ require 'bud'
 # It would make sense to split the client code into a separate class and move
 # the read channel state into a shared module. However, the current analysis is
 # per-class, so this would prevent doing RCE/RSE on the read protocol.
-class CausalDict
+class CausalKvsReplica
   include Bud
 
   state do

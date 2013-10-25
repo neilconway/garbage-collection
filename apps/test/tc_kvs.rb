@@ -1,13 +1,13 @@
-require_relative '../dict'
+require_relative '../kvs'
 gem 'minitest'  
 require 'minitest/autorun'
 
-class TestReplDict < MiniTest::Unit::TestCase
+class TestKvs < MiniTest::Unit::TestCase
   def test_dict_basic
     opts = { :quiet => true, :channel_stats => false }
     ports = (1..3).map {|i| i + 10001}
     addrs = ports.map {|p| "localhost:#{p}"}
-    rlist = ports.map {|p| ReplDict.new(opts.merge(:ip => "localhost", :port => p))}
+    rlist = ports.map {|p| KvsReplica.new(opts.merge(:ip => "localhost", :port => p))}
     rlist.each {|r| r.node <+ addrs.map {|a| [a]}}
 
     first = rlist.first
