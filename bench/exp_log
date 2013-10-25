@@ -1,0 +1,600 @@
+Run #: size = 10000, # percent = 0, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+10001
+Run #: size = 10000, # percent = 0, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+10001
+Run #: size = 10000, # percent = 0, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+10001
+Run #: size = 10000, # percent = 0, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+10001
+Run #: size = 10000, # percent = 0, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+10001
+Run #: size = 10000, # percent = 10, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9199
+Run #: size = 10000, # percent = 10, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9187
+Run #: size = 10000, # percent = 10, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9207
+Run #: size = 10000, # percent = 10, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9208
+Run #: size = 10000, # percent = 10, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9195
+Run #: size = 10000, # percent = 20, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8768
+Run #: size = 10000, # percent = 20, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8716
+Run #: size = 10000, # percent = 20, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8843
+Run #: size = 10000, # percent = 20, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8753
+Run #: size = 10000, # percent = 20, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8754
+Run #: size = 10000, # percent = 30, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8711
+Run #: size = 10000, # percent = 30, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8724
+Run #: size = 10000, # percent = 30, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8823
+Run #: size = 10000, # percent = 30, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8686
+Run #: size = 10000, # percent = 30, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8717
+Run #: size = 10000, # percent = 40, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8982
+Run #: size = 10000, # percent = 40, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8906
+Run #: size = 10000, # percent = 40, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8973
+Run #: size = 10000, # percent = 40, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9062
+Run #: size = 10000, # percent = 40, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+8959
+Run #: size = 10000, # percent = 50, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9384
+Run #: size = 10000, # percent = 50, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9345
+Run #: size = 10000, # percent = 50, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9311
+Run #: size = 10000, # percent = 50, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9359
+Run #: size = 10000, # percent = 50, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9333
+Run #: size = 10000, # percent = 60, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9731
+Run #: size = 10000, # percent = 60, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9703
+Run #: size = 10000, # percent = 60, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9725
+Run #: size = 10000, # percent = 60, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9695
+Run #: size = 10000, # percent = 60, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9708
+Run #: size = 10000, # percent = 70, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9926
+Run #: size = 10000, # percent = 70, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9924
+Run #: size = 10000, # percent = 70, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9927
+Run #: size = 10000, # percent = 70, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9931
+Run #: size = 10000, # percent = 70, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9934
+Run #: size = 10000, # percent = 80, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9994
+Run #: size = 10000, # percent = 80, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9998
+Run #: size = 10000, # percent = 80, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9999
+Run #: size = 10000, # percent = 80, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9998
+Run #: size = 10000, # percent = 80, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+9998
+Run #: size = 10000, # percent = 90, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+10001
+Run #: size = 10000, # percent = 90, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+10001
+Run #: size = 10000, # percent = 90, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+10001
+Run #: size = 10000, # percent = 90, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+10001
+Run #: size = 10000, # percent = 90, variant = no_partition
+RCE channel: chn
+RCE channel: req_chn
+RCE channel: resp_chn
+RSE: log
+RSE: safe_log
+RSE: dominated
+RSE: read_buf
+RSE: read_resp
+RSE: read_req
+RSE: node
+10001
