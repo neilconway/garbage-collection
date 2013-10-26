@@ -1,27 +1,28 @@
 require 'rubygems'
 require 'bud'
 
-# An implementation of a replicated dictionary that uses reliable broadcast, in
-# the style of Wuu & Bernstein ("Efficient Solutions to the Replicated Log and
-# Dictionary Problems", PODC'84).
+# An implementation of a key-value store (a.k.a., "replicated dictionary") that
+# uses reliable broadcast, in the style of Wuu & Bernstein ("Efficient Solutions
+# to the Replicated Log and Dictionary Problems", PODC'84).
 #
 # The system consists of a (fixed) set of nodes; each node has a complete copy
 # of the log. Any node can add a new entry to the log, which will then be
 # replicated to all the other nodes. Each log entry has a unique ID. Insert log
 # entries contain a <key, value> pair; delete log entries contain the unique ID
-# of the insert to be removed. Log entries are used to construct a dictionary.
-# Each node also keeps track of the knowledge at every other node; this info is
-# used to reclaim log entries when they have been delivered to all nodes.
+# of the insert to be removed. Log entries are used to construct the set of live
+# key-value mappings.  Each node also keeps track of the knowledge at every
+# other node; this info is used to reclaim log entries when they have been
+# delivered to all nodes.
 #
 # Wuu & Bernstein assume that there will be at most one insert for a given key;
 # hence, a delete references a _key_, and deleted elements can never be
-# reinstated. Instead, we allow multiple inserts of the same key (the dictionary
+# reinstated. Instead, we allow multiple inserts of the same key (the live view
 # consists of all such non-deleted inserts). Deletes reference an insertion ID;
 # once a given _ID_ has been deleted, it cannot be reinstated -- but another
 # insert with the same key is allowed.
 #
-# Our goal is to (a) implement the positive dictionary logic (log broadcast +
-# dictionary construction) (b) automatically infer the logic for both
+# Our goal is to (a) implement the positive program logic (log broadcast +
+# construction of the live view) (b) automatically infer the logic for both
 # propagating knowledge about node state and reclaiming log entries.
 #
 # Differences from Wuu & Bernstein:
@@ -39,7 +40,7 @@ require 'bud'
 # TODO:
 # * look at different schemes for propagating common knowledge
 #   (=> more efficient ACK'ing protocol, gossip, etc.)
-class ReplDict
+class KvsReplica
   include Bud
 
   state do

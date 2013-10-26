@@ -1,14 +1,14 @@
 require 'rubygems'
 require 'bud'
 
-# Slight variant of ReplDict; here, we assume that deletions identify the key to
-# be removed, not the ID. Because the "key" column is not a (Bloom) key of the
-# ins_log collection (i.e., we can have multiple inserts with different IDs and
-# the same key), this means we can never discard deletion log entries; moreover,
-# it means that once a key has been deleted it can never be reinstated (since a
-# single deletion is taken to dominate all insertions). This behavior is similar
-# to the 2P-Set CRDT.
-class ReplDictDeleteByKey
+# Slight variant of KvsReplica; here, we assume that deletions identify the key
+# to be removed, not the ID. Because the "key" column is not a (Bloom) key of
+# the ins_log collection (i.e., we can have multiple inserts with different IDs
+# and the same key), this means we can never discard deletion log entries;
+# moreover, it means that once a key has been deleted it can never be reinstated
+# (since a single deletion is taken to dominate all insertions). This behavior
+# is similar to the 2P-Set CRDT.
+class KvsReplicaDeleteByKey
   include Bud
 
   state do
@@ -38,7 +38,7 @@ end
 
 ports = (1..3).map {|i| i + 10001}
 addrs = ports.map {|p| "localhost:#{p}"}
-rlist = ports.map {|p| ReplDictDeleteByKey.new(:ip => "localhost", :port => p)}
+rlist = ports.map {|p| KvsReplicaDeleteByKey.new(:ip => "localhost", :port => p)}
 rlist.each do |r|
   r.node <+ addrs.map {|a| [a]}
   r.tick

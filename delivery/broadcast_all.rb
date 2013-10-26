@@ -22,14 +22,12 @@ class BroadcastAll
   bloom do
     chn <~ (node * log).pairs {|n,l| n + l}
     log <= chn.payloads
-
-    stdio <~ chn {|c| ["Got msg: #{c.inspect}"]}
   end
 end
 
 opts = { :channel_stats => true, :disable_rce => false, :disable_rse => false }
 
-ports = (1..3).map {|i| i + 10001}
+ports = (1..2).map {|i| i + 10001}
 addrs = ports.map {|p| "127.0.0.1:#{p}"}
 rlist = ports.map {|p| BroadcastAll.new(opts.merge(:port => p))}
 rlist.each do |r|
