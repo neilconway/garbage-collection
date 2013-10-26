@@ -33,7 +33,7 @@ def no_partition_bench(data)
   c = CausalDict.new
   c.log <+ data
   # How many times should we tick?
-  500.times { c.tick }
+  100.times { c.tick }
   p c.num_tuples
   c.num_tuples
 end
