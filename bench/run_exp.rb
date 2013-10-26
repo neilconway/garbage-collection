@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-nruns = 5
+nruns = 2
 #sizes = (1000..100000).select {|i| i % 1000 == 0}
 size = 10000
 percents = (0..90).select {|i| i % 10 == 0}

@@ -4,46 +4,36 @@ require "benchmark"
 require "bud"
 require_relative 'causal-dict'
 
-# First creates insertions with no dependencies. 
-# All live inserties are kept track of in "possible_dependencies".
-# For updates that should causally depend on another insertion,
-# a dependency is picked at random from "possible_dependencies".
-# "possible_dependencies" is then updated to only include the insertion
-# that dominated the selected dependency.
-
-def gen_data(num_writes, percent_update)
-  num_updates = ((percent_update.to_f / 100) * num_writes).to_i
-  num_orig_writes = num_writes - num_updates
-  possible_dependencies = Hash.new
-  id = 0
+def gen_data(size, percent)
   data = []
-  latest_updates = []
+  num_updates = ((percent.to_f / 100) * size).to_i
+  num_orig_writes = size - num_updates
+  id = 0
   num_orig_writes.times do
     write = [id, id, id, []]    
     data << write
-    possible_dependencies[id] = [id, id, []]
-    latest_updates << id
     id += 1
   end
-  num_updates.times do
-    random_dependency_id = latest_updates.sample(1)[0]
-    latest_updates.delete(random_dependency_id)
-    latest_updates << id
-    dep = possible_dependencies[random_dependency_id]
-    deps = dep[2] << random_dependency_id
-    write = [id, dep[0], dep[1] + 1, deps]
-    possible_dependencies[id] = [dep[0], dep[1] + 1, deps]
-    id += 1
-    data << write
+  data = data | gen_dom_data(num_updates, id)
+  p data
+  data
+end
+
+def gen_dom_data(size, start_index)
+  data = []
+  deps = []
+  size.times do |i|
+    data << [i + start_index, "foo", "bar#{i}", deps]
+    deps = [i + start_index]
   end
-  return data
+  data
 end
 
 def no_partition_bench(data)
   c = CausalDict.new
   c.log <+ data
   # How many times should we tick?
-  50.times { c.tick }
+  500.times { c.tick }
   p c.num_tuples
   c.num_tuples
 end
@@ -58,12 +48,12 @@ def partition_bench(data)
   b.log <+ sliced_data[1]
   a.stop_communication
   b.stop_communication
-  50.times { c.tick }
+  500.times { c.tick }
   storage << a.num_tuples
   storage << b.num_tuples
   a.start_communication
   b.start_communication
-  50.times { c.tick }
+  500.times { c.tick }
   storage << a.num_tuples
   storage << b.num_tuples
 end
@@ -97,5 +87,5 @@ raise ArgumentError, "Usage: bench.rb number_updates percent_update variant" unl
 size, percent, variant = ARGV
 bench(size.to_i, percent.to_i, variant)
 
-#gen_data(100, 50)
+# vbggen_data(20, 50)
 #bench(1000, 70, "no_partition")
