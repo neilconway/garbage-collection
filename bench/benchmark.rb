@@ -29,11 +29,21 @@ def gen_dom_data(size, start_index)
   data
 end
 
+def any_pending?(bud)
+  bud.tables.each_value do |t|
+    return true if t.pending_work?
+  end
+
+  false
+end
+
 def no_partition_bench(data)
   c = CausalDict.new
   c.log <+ data
-  # How many times should we tick?
-  100.times { c.tick }
+  loop do
+    c.tick
+    break unless any_pending? c
+  end
   p c.num_tuples
   c.num_tuples
 end
@@ -79,8 +89,7 @@ def bench(size, percent, variant)
     raise "Unrecognized variant: #{variant}"
   end
 
-  $stderr.printf("%d %d %d\n",
-                 size, percent, space_used)
+  $stderr.printf("%d %d %d\n", size, percent, space_used)
 end
 
 raise ArgumentError, "Usage: bench.rb number_updates percent_update variant" unless ARGV.length == 3
