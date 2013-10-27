@@ -44,6 +44,7 @@ def no_partition_bench(data)
     c.tick
     break unless any_pending? c
   end
+  raise unless c.log.to_a.empty? and c.dominated.to_a.empty? and c.safe.physical_size == 1
   p c.num_tuples
   c.num_tuples
 end
