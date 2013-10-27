@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 nruns = 2
 #sizes = (1000..100000).select {|i| i % 1000 == 0}
-size = 10000
+size = 100
 percents = (0..90).select {|i| i % 10 == 0}
-variants = ["no_partition"]
+variants = ["no_partition", "partition"]
 data_files = {}
 variants.each {|v| data_files[v] = "#{v}.data"}
 log_file = "exp_log"
@@ -43,18 +43,41 @@ data_files.each_pair do |v, fname|
     n.puts "#Variant: #{v}"
     n.puts "Percent MeanStorage"
     groups = {}
-    File.open(fname, "r").each_line do |l|
-      next if l =~ /^#/
-      fields = l.split(" ")
-      num_inserts = fields[0].to_i
-      percent = fields[1].to_i
-      storage = fields[2].to_i
-      groups[percent] ||= []
-      groups[percent] << storage 
-    end
-    groups.keys.sort.each do |k|
-      entry = groups[k]
-      n.printf("%d %0.6f\n", k , entry.mean)
+    if v == "partition"
+      File.open(fname, "r").each_line do |l|
+        next if l =~ /^#/
+        fields = l.split(" ")
+        num_inserts = fields[0].to_i
+        percent = fields[1].to_i
+        storage_before = fields[2].to_i
+        storage_after = fields[3].to_i
+        groups[percent] ||= []
+        groups[percent] << [storage_before, storage_after]
+      end
+      groups.keys.sort.each do |k|
+        entry = groups[k]
+        befores = []
+        afters = []
+        entry.each do |b, a|
+          befores << b
+          afters << a
+        end
+        n.printf("%d %0.6f %0.6f %0.6f\n", k, befores.mean, afters.mean, befores.mean - afters.mean)
+      end
+    else 
+      File.open(fname, "r").each_line do |l|
+        next if l =~ /^#/
+        fields = l.split(" ")
+        num_inserts = fields[0].to_i
+        percent = fields[1].to_i
+        storage = fields[2].to_i
+        groups[percent] ||= []
+        groups[percent] << storage 
+      end
+      groups.keys.sort.each do |k|
+        entry = groups[k]
+        n.printf("%d %0.6f\n", k , entry.mean)
+      end
     end
   end
 end
