@@ -17,8 +17,8 @@ class CausalKvsReplica
     table :safe_log, log.schema
     range :safe, [:id]
     scratch :pending, log.schema
-    scratch :flat_dep, [:id, :dep]
-    scratch :missing_dep, flat_dep.schema
+    scratch :pending_dep, [:id, :dep]
+    scratch :missing_dep, pending_dep.schema
 
     # State for computing the current KVS view
     table :dominated, [:id]
@@ -59,8 +59,8 @@ class CausalKvsReplica
     #
     # XXX: Tracking the set of "safe" IDs as well as "safe_log" is unfortunate.
     pending <= log.notin(safe, :id => :id)
-    flat_dep <= pending.flat_map {|l| l.deps.map {|d| [l.id, d]}}
-    missing_dep <= flat_dep.notin(safe, :dep => :id)
+    pending_dep <= pending.flat_map {|l| l.deps.map {|d| [l.id, d]}}
+    missing_dep <= pending_dep.notin(safe, :dep => :id)
     safe_log <+ pending.notin(missing_dep, :id => :id)
     safe <= safe_log {|l| [l.id]}
   end
