@@ -41,7 +41,6 @@ end
 
 module MultiKeyWrites
   include Dependencies
-  # fix me later!!!
   include SerialWriteConstraint
   state do
     # inputs
