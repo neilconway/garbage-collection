@@ -48,37 +48,46 @@ def no_partition_bench(data)
   c.num_tuples
 end
 
-def partition_bench(data1, data2)
-  sites = make_cluster
-  a = sites.first
-  b = sites.last
-  a.run_bg
-  b.run_bg
-  storage_before = -1
-  storage_after = -1
-  a.disconnect_channels
-  b.disconnect_channels
-  a.log <+ data1
-  b.log <+ data2
-  loop do
-    a.tick
-    b.tick
-    break unless any_pending? a
-    break unless any_pending? b
+def partition_bench2(size, percent, partition)
+  rlist = make_cluster
+  first = rlist.first
+  last = rlist.last
+  storage = []
+  start = Time.now.to_f
+  data = gen_data(size, percent)
+  data1 = data[0..data.size/2]
+  
+  first.log <+ data1
+  (data.size/2 + 5).times {
+    #first.log <+ [data1.pop] 
+    rlist.each(&:tick); 
+    sleep 0.1; 
+    storage << [(start - Time.now.to_f).abs, first.num_tuples] 
+  }
+  data2 = data[data.size/2..-1]
+  
+  disconnect_time = start - Time.now.to_f
+  if partition
+    first.disconnect_channels
+    last.disconnect_channels
   end
-  storage_before = a.num_tuples
 
-  a.connect_channels
-  b.connect_channels
-  data1.size.times { a.tick }
-  data2.size.times { b.tick }
-  sleep 2
-  raise unless a.log.to_a.empty? and a.dominated.to_a.empty? and a.safe.physical_size == 1
-  raise unless b.log.to_a.empty? and b.dominated.to_a.empty? and b.safe.physical_size == 1
-  storage_after = a.num_tuples
-  p storage_before
-  p storage_after
-  return storage_before, storage_after
+  #first.log <+ data2
+  (data.size/2 + 5).times { 
+    first.log <+ [data2.pop]
+    rlist.each(&:tick); 
+    sleep 0.1; 
+    storage << [(start - Time.now.to_f).abs, first.num_tuples] 
+  }
+
+  connect_time = start - Time.now.to_f
+  if partition
+    first.connect_channels
+    last.connect_channels
+  end
+
+  (data.size/2 + 5).times { rlist.each(&:tick); sleep 0.1; storage << [(start - Time.now.to_f).abs, first.num_tuples] }
+  return storage, disconnect_time, connect_time
 end
 
 def make_cluster
@@ -98,20 +107,27 @@ def bench(size, percent, variant)
     space_used = no_partition_bench(data)
     $stderr.printf("%d %d %d\n", size, percent, space_used)
   when "partition"
-    data1 = gen_data(size, percent)
-    data2 = gen_data(size, percent)
-    space_used_before, space_used_after = partition_bench(data1, data2)
-    $stderr.printf("%d %d %d %d\n", size, percent, space_used_before, space_used_after)
+    storage, disconnect, connect = partition_bench2(size, percent, true)
+    $stderr.printf("%f\n", disconnect.abs)
+    $stderr.printf("%f\n", connect.abs)
+    storage.each do |s|
+      $stderr.printf("%f %d\n", s[0], s[1])
+    end
+  when "partition_base"
+    storage, disconnect, connect = partition_bench2(size, percent, false)
+    $stderr.printf("%f\n", disconnect.abs)
+    $stderr.printf("%f\n", connect.abs)
+    storage.each do |s|
+      $stderr.printf("%f %d\n", s[0], s[1])
+    end
   else
     raise "Unrecognized variant: #{variant}"
-  end
-
-  
+  end  
 end
 
 raise ArgumentError, "Usage: bench.rb number_updates percent_update variant" unless ARGV.length == 3
 size, percent, variant = ARGV
 bench(size.to_i, percent.to_i, variant)
 
-# vbggen_data(20, 50)
-#bench(100, 70, "partition")
+#partition_bench2(100, 20)
+#bench(100, 20, "partition")

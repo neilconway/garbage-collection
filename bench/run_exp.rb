@@ -1,9 +1,11 @@
 #!/usr/bin/env ruby
+
+# Run non-partition experiment
 nruns = 2
-#sizes = (1000..100000).select {|i| i % 1000 == 0}
 size = 100
 percents = (0..90).select {|i| i % 10 == 0}
-variants = ["no_partition", "partition"]
+variants = ["no_partition"]
+#variants = []
 data_files = {}
 variants.each {|v| data_files[v] = "#{v}.data"}
 log_file = "exp_log"
@@ -26,6 +28,14 @@ percents.each do |p|
   end
 end
 
+# Run partition experiment
+log_file = "exp_partition_log"
+`rm -f #{log_file}`
+`echo "#Variant: Partitioned Storage\n#Time storage" | cat > partition.data`
+puts "Running Partition Experiment"
+`ruby benchmark.rb 100 20 partition >> #{log_file} 2>>partition.data`
+
+
 module Enumerable
   def sum
     self.inject(0){|accum, i| accum + i }
@@ -36,48 +46,62 @@ module Enumerable
   end
 end
 
-# Compute summary data for each run. It would be more convenient to compute this
-# in the gnuplot script, but it seems hard to do a grouped aggregate in gnuplot.
+
+# Average data from the non-partition experiemtn
+# and output to partition.summary
 data_files.each_pair do |v, fname|
   File.open("#{v}.summary", "w") do |n|
     n.puts "#Variant: #{v}"
     n.puts "Percent MeanStorage"
     groups = {}
-    if v == "partition"
-      File.open(fname, "r").each_line do |l|
-        next if l =~ /^#/
-        fields = l.split(" ")
-        num_inserts = fields[0].to_i
-        percent = fields[1].to_i
-        storage_before = fields[2].to_i
-        storage_after = fields[3].to_i
-        groups[percent] ||= []
-        groups[percent] << [storage_before, storage_after]
-      end
-      groups.keys.sort.each do |k|
-        entry = groups[k]
-        befores = []
-        afters = []
-        entry.each do |b, a|
-          befores << b
-          afters << a
-        end
-        n.printf("%d %0.6f %0.6f %0.6f\n", k, befores.mean, afters.mean, befores.mean - afters.mean)
-      end
-    else 
-      File.open(fname, "r").each_line do |l|
-        next if l =~ /^#/
-        fields = l.split(" ")
-        num_inserts = fields[0].to_i
-        percent = fields[1].to_i
-        storage = fields[2].to_i
-        groups[percent] ||= []
-        groups[percent] << storage 
-      end
-      groups.keys.sort.each do |k|
-        entry = groups[k]
-        n.printf("%d %0.6f\n", k , entry.mean)
-      end
+    File.open(fname, "r").each_line do |l|
+      next if l =~ /^#/
+      fields = l.split(" ")
+      num_inserts = fields[0].to_i
+      percent = fields[1].to_i
+      storage = fields[2].to_i
+      groups[percent] ||= []
+      groups[percent] << storage 
+    end
+    groups.keys.sort.each do |k|
+      entry = groups[k]
+      n.printf("%d %0.6f\n", k , entry.mean)
+    end
+  end
+end
+
+# Extract the time channels were disconnected
+# and re-connected from the data. Output to
+# partition_time.summary
+`rm -f partition_time.summary`
+File.open("partition_time.summary", "w") do |n|
+  n.puts "#Variant: Partition"
+  n.puts "# Time"
+  i = 0
+  File.open('partition_base.data', "r").each_line do |l|
+    next if l =~ /^#/
+    if i >= 2
+      break
+    end
+    fields = l.split(" ")
+    i += 1
+    if fields.size == 1
+      n.printf("%f\n", fields[0])
+    end
+  end
+end
+
+# Extract the (time, storage) pairs from the data
+# output to partition_data.summary
+`rm -f partition_data.summary`
+File.open("partition_data.summary", "w") do |n|
+  n.puts "# Variant: Partition"
+  n.puts "# Time, Storage"
+  File.open('partition.data', "r").each_line do |l|
+    next if l =~ /^#/
+    fields = l.split(" ")
+    if fields.size == 2
+      n.printf("%f %f\n", fields[0], fields[1])
     end
   end
 end

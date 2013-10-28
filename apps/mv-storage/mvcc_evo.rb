@@ -23,7 +23,7 @@ module SimpleMV
   bloom do
     write_event <= write.notin(write_log, :wid => :wid)
     write_log <+ (write_event * live).pairs(:key => :key) do |e, l|
-      e.to_a + [l.wid]
+      e + [l.wid]
     end
   end
 end

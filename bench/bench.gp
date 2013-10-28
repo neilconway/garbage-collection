@@ -10,5 +10,7 @@ set style line 4 lt rgb "#F25900" lw 2 pt 9
 
 plot "no_partition.summary" using 1:2 title "Storage Used vs Update Percentage " w lp ls 1
 
-plot "partition.summary" using 1:2 title "Partitioned Storage" w lp ls 1, \
-	"partition.summary" using 1:3 title "No partition" w lp ls 2
+set xlabel "Time, seconds"
+set key bottom right
+
+plot "partition_data.summary" using 1:2 title "Partitioned Storage" w lp ls 3
