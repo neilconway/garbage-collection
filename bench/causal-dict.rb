@@ -106,15 +106,15 @@ class CausalDict
   end
 
   def num_tuples
-    puts "Log: #{log.to_a.size}"
-    puts "safe_log: #{safe_log.to_a.size}"
-    puts "safe: #{safe.physical_size}"
-    puts "dominated: #{dominated.to_a.size}"
-    puts "read_buf: #{read_buf.to_a.size}"
-    puts "read_resp: #{read_resp.to_a.size}"
-    puts "done_read: #{done_read.physical_size}"
-    puts "read_req: #{read_req.to_a.size}"
-    puts "read_result: #{read_result.to_a.size}"
-    log.to_a.size + safe_log.to_a.size + safe.physical_size + dominated.to_a.size + read_buf.to_a.size + read_resp.to_a.size + done_read.physical_size + read_req.to_a.size + read_result.to_a.size
+    sizes = @app_tables.map do |t|
+      if t.kind_of? Bud::BudRangeCompress
+        t.physical_size
+      elsif t.kind_of? Bud::BudTable
+        t.to_a.size
+      else
+        0
+      end
+    end
+    sizes.reduce(:+)
   end
 end
