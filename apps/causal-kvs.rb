@@ -35,7 +35,6 @@ class CausalKvsReplica
     scratch :missing_read_dep, read_dep.schema
     scratch :safe_read, read_buf.schema
     table :read_resp, resp_chn.schema
-    range :done_read, [:id]
 
     # Client-side read state
     table :read_req, req_chn.schema
@@ -86,12 +85,11 @@ class CausalKvsReplica
     # XXX: there should be a cleaner way to write this. We'd like to say that
     # "read_pending is the delta between read_resp and read_buf".
     read_buf <= req_chn {|r| [r.id, r.key, r.deps, r.source_addr]}
-    read_pending <= read_buf.notin(done_read, :id => :id)
+    read_pending <= read_buf.notin(read_resp, :id => :id)
     read_dep <= read_pending.flat_map {|r| r.deps.map {|d| [r.id, d]}}
     missing_read_dep <= read_dep.notin(safe, :dep => :id)
     safe_read <= read_pending.notin(missing_read_dep, :id => :id)
-    read_resp <= (safe_read * view).pairs(:key => :key) {|r,v| [r.src_addr, r.id, r.key, v.val]}
-    done_read <+ read_resp {|r| [r.id]}
+    read_resp <+ (safe_read * view).pairs(:key => :key) {|r,v| [r.src_addr, r.id, r.key, v.val]}
     resp_chn <~ read_resp
   end
 
