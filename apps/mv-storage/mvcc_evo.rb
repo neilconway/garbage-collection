@@ -84,7 +84,7 @@ module SimplerMultiKeyReads
   bloom do
     snapshot_exists <= snapshot{|r| [r.effective]}
     read_event <= read.notin(read_commit, :xact => :xact).notin(snapshot_exists, :xact => :xact)
-    snapshot <+ (read_event * live).pairs{|r, l| [r.xact] + l.to_a}
+    snapshot <+ (read_event * live).pairs{|r, l| [r.xact] + l}
     read_view <= snapshot.notin(read_commit, :effective => :xact)
   end
 end
