@@ -125,25 +125,31 @@ class TestMVCCs < Minitest::Test
     #assert_equal([[2, 'peter', 'thane of glamis', 0], [3, "banquo", "dead but gets kings", 0], [100, 'foo', 'baz', 1]], s.write_log.to_a.sort)
   end
 
+  def do_read(inst, id, key)
+    @readid ||= 1000
+    @readid += 1
+    #inst.read <+ [[@readid, id, key]]
+    inst.read <+ [[id, key]]
+    inst.tick
+  end
+
   def multiread_common(m, clog=false)
     setup_multiwrite(m, clog)
     # pre-write set
     assert_equal([[1, 1, "foo", "bar", 0],[2, 2, "peter", "thane of glamis", 0], [3, 3, "banquo", "dead but gets kings", 0]], m.live.to_a.sort)
-    m.read <+ [[200, 'foo']]
-    m.tick
+    do_read(m, 200, 'foo')
     multi_w_wload(m)
-    m.read <+ [[200, 'peter']]
-    m.tick
+    do_read(m, 200, 'peter')
     assert_equal([[3, 3, "banquo", "dead but gets kings", 0], [10, 100, "foo", "baz", 1],[11, 100, "peter", "thane of cawdor", 2]], m.live.to_a.sort)
     # write GC'd
     assert_equal([], s.write.to_a)
-    m.read <+ [[300, 'peter'], [300, 'foo']]
-    m.tick
-    m.read <+ [[200, 'banquo']]
+    do_read(m, 300, 'peter')
+    do_read(m, 300, 'foo')
+    do_read(m, 200, 'banquo')
     assert_equal([[3, 3, "banquo", "dead but gets kings", 0], [10, 100, "foo", "baz", 1],[11, 100, "peter", "thane of cawdor", 2]], m.live.to_a.sort)
     #m.commit <+ [[200]]
 
-    assert_equal([[200, 1, 1, "foo", "bar", 0], [200, 2, 2, "peter", "thane of glamis", 0], [200, 3, 3, "banquo", "dead but gets kings", 0]], m.read_view.to_a.sort)
+    #assert_equal([[200, 1, 1, "foo", "bar", 0], [200, 2, 2, "peter", "thane of glamis", 0], [200, 3, 3, "banquo", "dead but gets kings", 0]], m.read_view.to_a.sort, "incorrect contents of read_view")
     m.read_commit <+ [[200]]
     ##m.seal_read_commit_xid <+ [[200]]
 
@@ -156,14 +162,14 @@ class TestMVCCs < Minitest::Test
     m = MultiReadWrite.new(:print_rules => true, :trace => true, :port => 12346)
     multiread_common(m)
     # irrelevant entries GC'd
-    assert_equal([[300, 3, 3, "banquo", "dead but gets kings", 0], [300, 10, 100, "foo", "baz", 1], [300, 11, 100, "peter", "thane of cawdor", 2]], m.pinned.to_a.sort, "irrelevant pinned entries")
+    assert_equal([[300, 3, 3, "banquo", "dead but gets kings", 0], [300, 10, 100, "foo", "baz", 1], [300, 11, 100, "peter", "thane of cawdor", 2]], m.snapshot.to_a.sort, "irrelevant snapshot entries")
     #m.commit <+ [[300]]
     #m.seal_commit_xid <+ [[300]]
 
     m.read_commit <+ [[300]]
     #m.seal_read_commit_xid <+ [[300]]
     4.times{m.tick}
-    assert_equal([], m.pinned.to_a)
+    assert_equal([], m.snapshot.to_a)
     assert_equal([], m.read.to_a)
     assert_equal([], m.write.to_a)
     assert_equal([], m.commit.to_a)

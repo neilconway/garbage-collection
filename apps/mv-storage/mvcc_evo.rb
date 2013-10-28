@@ -67,11 +67,11 @@ module ReadTabs
     range :read_commit, [:xact]
   
     # internal
-    table :pinned, [:effective, :wid, :xact, :key, :val, :prev_wid]
-  
+    table :snapshot, [:effective, :wid, :xact, :key, :val, :prev_wid]
+
     scratch :read_event, read.schema
     scratch :read_commit_event, read.schema
-    scratch :read_view, pinned.schema
+    scratch :read_view, snapshot.schema
   end
 end
 
@@ -79,13 +79,12 @@ module SimplerMultiKeyReads
   include MultiKeyWrites
   include ReadTabs
   state do
-    table :ever_pinned, [:xact]
+    range :snapshot_exists, [:xact]
   end
   bloom do
-    #ever_pinned <= pinned{|w| [w.effective]}.notin(read_commit, 0 => :xact)
-    ever_pinned <= pinned.notin(read_commit, :effective => :xact).pro{|r| [r.effective]}
-    read_event <= read.notin(read_commit, :xact => :xact).notin(ever_pinned, :xact => :xact)
-    pinned <+ (read_event * live).pairs{|r, l| [r.xact] + l.to_a}
-    read_view <= pinned.notin(read_commit, :effective => :xact)
+    snapshot_exists <= snapshot{|r| [r.effective]}
+    read_event <= read.notin(read_commit, :xact => :xact).notin(snapshot_exists, :xact => :xact)
+    snapshot <+ (read_event * live).pairs{|r, l| [r.xact] + l.to_a}
+    read_view <= snapshot.notin(read_commit, :effective => :xact)
   end
 end
