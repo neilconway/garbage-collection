@@ -23,7 +23,7 @@ module SimpleMV
   bloom do
     write_event <= write.notin(write_log, :wid => :wid)
     write_log <+ (write_event * live).pairs(:key => :key) do |e, l|
-      e.to_a + [l.wid]
+      e + [l.wid]
     end
   end
 end
@@ -82,10 +82,9 @@ module SimplerMultiKeyReads
     table :ever_pinned, [:xact]
   end
   bloom do
-    #ever_pinned <= pinned{|w| [w.effective]}.notin(read_commit, 0 => :xact)
     ever_pinned <= pinned.notin(read_commit, :effective => :xact).pro{|r| [r.effective]}
     read_event <= read.notin(read_commit, :xact => :xact).notin(ever_pinned, :xact => :xact)
-    pinned <+ (read_event * live).pairs{|r, l| [r.xact] + l.to_a}
+    pinned <+ (read_event * live).pairs{|r, l| [r.xact] + l}
     read_view <= pinned.notin(read_commit, :effective => :xact)
   end
 end
