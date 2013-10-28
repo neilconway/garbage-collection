@@ -3,30 +3,28 @@ require 'bud'
 
 module Dependencies
   state do
-    range :write_done, [:key, :prev_xid]
+    range :write_done, [:prev_xid]
   end
   bloom do
-    write_done <= write_log{|l| [l.key, l.prev_xid]}
-    live <= write_log.notin(write_done, :xid => :prev_xid, :key => :key)
+    write_done <= write_log{|l| [l.prev_xid]}
+    live <= write_log.notin(write_done, :xid => :prev_xid)
   end
 end
 
 module SimpleMV
-  # the simplest possible multivalued store
   include Dependencies
   state do
-    # inputs
-    table :write, [:xid] => [:key, :val]
-    # internal state
-    table :write_log, [:xid] => [:key, :val, :prev_xid]
-    # views
+    table :write, [:xid] => [:xact, :key, :val]
+    table :write_log, [:xid] => [:xact, :key, :val, :prev_xid]
     scratch :write_event, write.schema
     scratch :live, write_log.schema
   end
 
   bloom do
     write_event <= write.notin(write_log, :xid => :xid)
-    write_log <+ (write_event * live).pairs(:key => :key){|e, l| [e.xid, e.key, e.val, l.xid]}
+    write_log <+ (write_event * live).pairs(:key => :key) do |e, l|
+      e.to_a + [l.xid]
+    end
   end
 end
 
@@ -46,18 +44,18 @@ module MultiKeyWrites
   include SerialWriteConstraint
   state do
     # inputs
-    table :write, [:xid, :key] => [:val]
-    table :commit, [:xid]
+    table :write, [:xid] => [:xact, :key, :val]
+    table :commit, [:xact]
     # internal state
-    table :write_log, [:xid, :key] => [:val, :prev_xid]
+    table :write_log, [:xid] => [:xact, :key, :val, :prev_xid]
     # views
     scratch :live, write_log.schema
     scratch :write_commit_event, write.schema
   end
 
   bloom do
-    write_commit_event <= (write * commit).pairs(:xid => :xid){|w,s| w}.notin(write_log, 0 => :xid)
-    write_log <+ (write_commit_event * live).pairs(:key => :key){|e, l| [e.xid, e.key, e.val, l.xid]}
+    write_commit_event <= (write * commit).pairs(:xact => :xact){|w,s| w}.notin(write_log, 0 => :xid)
+    write_log <+ (write_commit_event * live).pairs(:key => :key){|e, l| [e.xid, e.xact, e.key, e.val, l.xid]}
   end
 end
 
@@ -69,12 +67,12 @@ module ReadTabs
     table :read_commit, [:xid]
   
     # internal
-    table :pinned_writes, [:effective, :xid, :key, :val, :prev_xid]
+    table :pinned, [:effective, :xid, :xact, :key, :val, :prev_xid]
     range :read_commit_log, [:xid]
   
     scratch :read_event, read.schema
     scratch :read_commit_event, read.schema
-    scratch :read_view, pinned_writes.schema
+    scratch :read_view, pinned.schema
   end
 end
 
@@ -83,12 +81,14 @@ module SimplerMultiKeyReads
   include ReadTabs
   state do
     range :ever_pinned, [:xid]
+    #table :ever_pinned, [:xid]
   end
   bloom do
-    ever_pinned <= pinned_writes{|w| [w.effective]}
-    read_event <= read.notin(ever_pinned, :xid => :xid)
-    pinned_writes <+ (read_event * live).pairs{|r, l| [r.xid] + l.to_a}
-    read_view <= pinned_writes.notin(read_commit_log, :effective => :xid)
+    ever_pinned <= pinned{|w| [w.effective]}
+    #read_event <= read.notin(ever_pinned, :xid => :xid)
+    read_event <= read.notin(read_commit_log, :xid => :xid).notin(ever_pinned, :xid => :xid)
+    pinned <+ (read_event * live).pairs{|r, l| [r.xid] + l.to_a}
+    read_view <= pinned.notin(read_commit_log, :effective => :xid)
     read_commit_log <+ read_commit{|c| [c.xid]}
   end
 end

@@ -13,6 +13,7 @@ module AnotherApproach
     scratch :nogood, [:reader, :writer]
     scratch :candidates, [:reader] + write_log.key_cols => write_log.val_cols
     scratch :read_view, candidates.schema
+    scratch :pre_candidates, candidates.schema
 
     scratch :relevant_writes, write_log.schema
 
@@ -25,7 +26,12 @@ module AnotherApproach
     nogood <= (effective * commit_log).pairs(:anchor => :prev_xid){|e, c| [e.xid, c.xid]}
     nogood <= (nogood * commit_log).pairs(:writer => :prev_xid){|n, c| [n.reader, c.xid]}
 
-    candidates <= (write_log * read).pairs(:key => :key){|w, r| [r.xid] + w.to_a}.notin(nogood, 1 => :writer)
+   # candidates <= (write_log * read).pairs(:key => :key){|w, r| [r.xid] + w.to_a}.notin(nogood, 1 => :writer)
+
+    pre_candidates <= (write_log * read).pairs(:key => :key){|w, r| [r.xid] + w.to_a}
+    candidates <= pre_candidates.notin(nogood, 1 => :writer)
+
+
     #read_view <+ write_log.notin(candidates, :xid => :prev_xid, :key => :key)
     read_view <+ candidates.notin(candidates, :xid => :prev_xid, :key => :key)
 
@@ -91,9 +97,9 @@ end
 module HWM
   # cool stuff, but unnecessary for the naive 'snapshotting' implementation
   state do
+    table :commit_log, [:xid] => [:prev_xid]
     scratch :last_commit, commit_log.schema
     range :previous_commits, [:xid]
-    table :commit_log, [:xid] => [:prev_xid]
   end
 
   bloom do
