@@ -63,12 +63,11 @@ module ReadTabs
   # separated because reused in dev.rb
   state do
     # input
-    table :read, [:xid, :key]
-    table :read_commit, [:xid]
+    table :read, [:xact, :key]
+    range :read_commit, [:xact]
   
     # internal
     table :pinned, [:effective, :xid, :xact, :key, :val, :prev_xid]
-    range :read_commit_log, [:xid]
   
     scratch :read_event, read.schema
     scratch :read_commit_event, read.schema
@@ -80,15 +79,12 @@ module SimplerMultiKeyReads
   include MultiKeyWrites
   include ReadTabs
   state do
-    range :ever_pinned, [:xid]
-    #table :ever_pinned, [:xid]
+    table :ever_pinned, [:xact]
   end
   bloom do
-    ever_pinned <= pinned{|w| [w.effective]}
-    #read_event <= read.notin(ever_pinned, :xid => :xid)
-    read_event <= read.notin(read_commit_log, :xid => :xid).notin(ever_pinned, :xid => :xid)
-    pinned <+ (read_event * live).pairs{|r, l| [r.xid] + l.to_a}
-    read_view <= pinned.notin(read_commit_log, :effective => :xid)
-    read_commit_log <+ read_commit{|c| [c.xid]}
+    ever_pinned <= pinned{|w| [w.effective]}.notin(read_commit, 0 => :xact)
+    read_event <= read.notin(read_commit, :xact => :xact).notin(ever_pinned, :xact => :xact)
+    pinned <+ (read_event * live).pairs{|r, l| [r.xact] + l.to_a}
+    read_view <= pinned.notin(read_commit, :effective => :xact)
   end
 end
