@@ -4,8 +4,8 @@
 nruns = 2
 size = 1000
 percents = (0..90).select {|i| i % 10 == 0}
-variants = ["no_partition"]
-#variants = []
+#variants = ["no_partition"]
+variants = []
 data_files = {}
 variants.each {|v| data_files[v] = "#{v}.data"}
 log_file = "exp_log"

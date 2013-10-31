@@ -28,6 +28,29 @@ def gen_dom_data(size, start_index)
   data
 end
 
+def gen_incremental_update(size, percent)
+  data = []
+  id = 0
+  num_updates = ((percent.to_f / 100) * 10).to_i
+  p num_updates
+  num_orig = 10 - num_updates
+  p num_orig
+  (size/10).times do
+    update_id = -1
+    num_orig.times { 
+      data << [id, "foo", id, []]
+      update_id = id
+      id += 1
+    }
+    num_updates.times {
+      data << [id, "foo", id, [update_id]]
+      update_id += 1
+      id += 1
+    }
+  end
+  data
+end
+
 def any_pending?(bud)
   bud.tables.each_value do |t|
     return true if t.pending_work?
@@ -44,6 +67,25 @@ def no_partition_bench(data)
   end
   raise unless c.log.to_a.empty? and c.dominated.to_a.empty? and c.safe.physical_size == 1
   num_tuples(c)
+end
+
+def no_partition_bench2(data, percent)
+  d = data
+  c = CausalKvsReplica.new
+  storage = []
+  converge_point = data.size - ((percent.to_f / 100) * data.size).to_i
+  start = Time.now.to_f
+  loop do
+    c.log <+ d.pop(10)
+    20.times { c.tick }
+    storage << [(start - Time.now.to_f).abs, num_tuples(c)]
+    if c.safe_log.to_a.size >= converge_point and c.log.to_a.size == 0
+      break
+    end
+    #break unless any_pending? c
+  end
+  #raise unless c.log.to_a.empty?
+  storage
 end
 
 def partition_bench(size)
@@ -130,6 +172,7 @@ def num_tuples(bud)
       0
     end
   end
+  p sizes.reduce(:+)
   sizes.reduce(:+)
 end
 
@@ -137,7 +180,7 @@ def bench(size, percent, variant)
   puts "Run #: size = #{size}, # percent = #{percent}, variant = #{variant}"
 
   case variant
-  when "no_partition"
+  when "no_partition_old"
     data = gen_data(size, percent)
     space_used = no_partition_bench(data)
     $stderr.printf("%d %d %d\n", size, percent, space_used)
@@ -150,6 +193,12 @@ def bench(size, percent, variant)
     storage.each do |s|
       $stderr.printf("%f %d\n", s[0], s[1])
     end
+  when "no_partition_new"
+    data = gen_incremental_update(size, percent)
+    space_used = no_partition_bench2(data, percent)
+    space_used.each do |s|
+      $stderr.printf("%f %d\n", s[0], s[1])
+    end
   else
     raise "Unrecognized variant: #{variant}"
   end  
@@ -158,3 +207,6 @@ end
 raise ArgumentError, "Usage: bench.rb number_updates percent_update variant" unless ARGV.length == 3
 size, percent, variant = ARGV
 bench(size.to_i, percent.to_i, variant)
+
+#p gen_dom_data(10, 0)
+#p gen_data_2(100, 90)
