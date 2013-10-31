@@ -77,12 +77,10 @@ def no_partition_bench2(data, percent)
     c.log <+ d.pop(10)
     20.times { c.tick }
     storage << [(start - Time.now.to_f).abs, num_tuples(c)]
-    if c.safe_log.to_a.size >= converge_point and c.log.to_a.size == 0
+    if (start - Time.now.to_f).abs > 60
       break
     end
-    #break unless any_pending? c
   end
-  #raise unless c.log.to_a.empty?
   storage
 end
 
