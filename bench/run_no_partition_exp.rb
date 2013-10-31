@@ -2,7 +2,7 @@ size = 1000
 percents = (0..90).select {|i| i % 10 == 0}
 #percents = [0, 50, 90]
 data_files = {}
-percents.each {|v| data_files[v] = "no_partition_cont_#{v}.data"}
+percents.each {|v| data_files[v] = "no_partition_#{v}.data"}
 log_file = "exp_log"
 
 `rm -f #{log_file}`
