@@ -74,10 +74,25 @@ def no_partition_bench2(data, percent)
   converge_point = data.size - ((percent.to_f / 100) * data.size).to_i
   start = Time.now.to_f
   loop do
-    c.log <+ d.pop(10)
-    20.times { c.tick }
+    before_insert = Time.now.to_f
+    c.log <+ d.pop(100)
+    while any_pending?(c)
+      c.tick
+    end
+    after_insert = Time.now.to_f
+    process_time = (insert - after_insert).abs
+    if 1 - process_time > 0
+      sleep_time = 1 - process_time
+    else
+      sleep_time = 0
+    end
+    sleep sleep_time
+    p d.size
     storage << [(start - Time.now.to_f).abs, num_tuples(c)]
-    if (start - Time.now.to_f).abs > 60
+    #if (start - Time.now.to_f).abs > 60
+    #  break
+    #end
+    if c.safe_log.to_a.size >= converge_point and c.log.to_a.size == 0
       break
     end
   end
