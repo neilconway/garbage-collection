@@ -75,20 +75,17 @@ def no_partition_bench2(data, percent)
   start = Time.now.to_f
   loop do
     before_insert = Time.now.to_f
-    c.log <+ d.pop(40)
+    p before_insert
+    c.log <+ d.pop(50)
     while any_pending?(c)
       c.tick
     end
-    after_insert = Time.now.to_f
-    process_time = (before_insert - after_insert).abs
-    if 1 - process_time > 0
-      sleep_time = 1 - process_time
-    else
-      sleep_time = 0
-    end
-    sleep sleep_time
-    p d.size
+    p "Tuples left: #{d.size}"
     storage << [(start - Time.now.to_f).abs, num_tuples(c)]
+    elapsed = (before_insert - Time.now.to_f).abs
+    if elapsed < 1
+      sleep 1 - elapsed
+    end
     #if (start - Time.now.to_f).abs > 60
     #  break
     #end
