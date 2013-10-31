@@ -103,6 +103,7 @@ def partition_bench(size)
   storage = []
   start = Time.now.to_f
   data = gen_dom_data(size, 0).reverse
+  rate = []
   
   disconnect1 = true
   connect1 = false
@@ -116,9 +117,12 @@ def partition_bench(size)
 
   data.size.times {
     first.log <+ [data.pop]
-    p data.size
-    4.times { rlist.each(&:tick); }
-    sleep 0.1; 
+    rate << Time.now.to_f
+    p "Data size: #{data.size}"
+    while any_pending?(first) or any_pending?(last)
+      rlist.each(&:tick)
+    end
+    sleep 0.1;
     storage << [(start - Time.now.to_f).abs, num_tuples(first)] 
 
     if (start - Time.now.to_f).abs > 30 and disconnect1 == true
@@ -155,7 +159,8 @@ def partition_bench(size)
       break
     end
   }
-  p storage
+  #p storage
+  p rate
   return storage, disconnect_time, connect_time, disconnect_time2, connect_time2
 end
 
