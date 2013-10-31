@@ -32,19 +32,17 @@ def gen_incremental_update(size, percent)
   data = []
   id = 0
   num_updates = ((percent.to_f / 100) * 10).to_i
-  p num_updates
   num_orig = 10 - num_updates
-  p num_orig
   (size/10).times do
-    update_id = -1
+    update_id = id
+    dep_id = id
     num_orig.times { 
-      data << [id, "foo", id, []]
-      update_id = id
+      data << [id, "foo#{id}", id, []]
       id += 1
     }
     num_updates.times {
-      data << [id, "foo", id, [update_id]]
-      update_id += 1
+      data << [id, "foo#{update_id}", id, [dep_id]]
+      dep_id = id
       id += 1
     }
   end
