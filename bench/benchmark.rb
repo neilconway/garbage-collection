@@ -75,12 +75,12 @@ def no_partition_bench2(data, percent)
   start = Time.now.to_f
   loop do
     before_insert = Time.now.to_f
-    c.log <+ d.pop(100)
+    c.log <+ d.pop(40)
     while any_pending?(c)
       c.tick
     end
     after_insert = Time.now.to_f
-    process_time = (insert - after_insert).abs
+    process_time = (before_insert - after_insert).abs
     if 1 - process_time > 0
       sleep_time = 1 - process_time
     else
