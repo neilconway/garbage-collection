@@ -2,10 +2,10 @@
 
 # Run non-partition experiment
 nruns = 2
-size = 100
+size = 1000
 percents = (0..90).select {|i| i % 10 == 0}
-variants = ["no_partition"]
-#variants = []
+#variants = ["no_partition"]
+variants = []
 data_files = {}
 variants.each {|v| data_files[v] = "#{v}.data"}
 log_file = "exp_log"
@@ -33,7 +33,7 @@ log_file = "exp_partition_log"
 `rm -f #{log_file}`
 `echo "#Variant: Partitioned Storage\n#Time storage" | cat > partition.data`
 puts "Running Partition Experiment"
-`ruby benchmark.rb 100 20 partition >> #{log_file} 2>>partition.data`
+`ruby benchmark.rb 1000 100 partition >> #{log_file} 2>>partition.data`
 
 
 module Enumerable
@@ -78,9 +78,9 @@ File.open("partition_time.summary", "w") do |n|
   n.puts "#Variant: Partition"
   n.puts "# Time"
   i = 0
-  File.open('partition_base.data', "r").each_line do |l|
+  File.open('partition.data', "r").each_line do |l|
     next if l =~ /^#/
-    if i >= 2
+    if i >= 4
       break
     end
     fields = l.split(" ")
