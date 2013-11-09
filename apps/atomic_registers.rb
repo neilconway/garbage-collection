@@ -35,9 +35,7 @@ class AtomicBatchWrites
   end
 
   bloom do
-    # lefts don't work yet
-    #commit_event <= (write * commit).lefts(:batch => :batch).notin(write_log, 0 => :wid)
-    commit_event <= (write * commit).pairs(:batch => :batch){|w,c| w}.notin(write_log, 0 => :wid)
+    commit_event <= (write * commit).lefts(:batch => :batch).notin(write_log, 0 => :wid)
     write_log <+ (commit_event * live).pairs(:name => :name) do |e,l| 
       [e.wid, e.batch, e.name, e.val, l.wid]
     end
