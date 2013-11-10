@@ -36,7 +36,7 @@ class AtomicBatchWrites
 
   bloom do
     commit_event <= (write * commit).lefts(:batch => :batch).notin(write_log, 0 => :wid)
-    write_log <+ (commit_event * live).pairs(:name => :name) do |e,l| 
+    write_log <+ (commit_event * live).pairs(:name => :name) do |e,l|
       [e.wid, e.batch, e.name, e.val, l.wid]
     end
     write_done <= write_log {|l| [l.prev_wid]}
@@ -59,7 +59,7 @@ class AtomicReads
   bloom do
     snapshot_exists <= snapshot {|w| [w.effective]}
     read_event <= read.notin(snapshot_exists, :batch => :batch)
-    snapshot <+ (read_event * live).pairs {|r, l| [r.batch] + l} 
+    snapshot <+ (read_event * live).pairs {|r,l| [r.batch] + l}
     read_view <= snapshot.notin(read_commit, :effective => :batch)
   end
 end
