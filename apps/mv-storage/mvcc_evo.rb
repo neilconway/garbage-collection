@@ -11,18 +11,18 @@ module Dependencies
   end
 end
 
-module SimpleMV
+module AtomicRegister
   include Dependencies
   state do
-    table :write, [:wid] => [:xact, :key, :val]
-    table :write_log, [:wid] => [:xact, :key, :val, :prev_wid]
+    table :write, [:wid] => [:batch, :name, :val]
+    table :write_log, [:wid] => [:batch, :name, :val, :prev_wid]
     scratch :write_event, write.schema
     scratch :live, write_log.schema
   end
 
   bloom do
-    write_event <= write.notin(write_log, :wid => :wid)
-    write_log <+ (write_event * live).pairs(:key => :key) do |e, l|
+    write_event <= write.notin(write_log, :wid => :wid).argagg(:min, [:name], :wid)
+    write_log <+ (write_event * live).pairs(:name => :name) do |e, l|
       e + [l.wid]
     end
   end
@@ -30,61 +30,53 @@ end
 
 module SerialWriteConstraint
   # enforce the constraint that at any time, at most one transaction (performing all its writes at once)
-  # writes to any given key.
+  # writes to any given name.
   state do
-    scratch :write_commit_constraint, [:key] => [:wid]
+    scratch :write_commit_constraint, [:name] => [:wid]
   end
   bloom :constraint do
-    write_commit_constraint <= write_commit_event{|e| [e.key, e.wid]}
+    write_commit_constraint <= write_commit_event{|e| [e.name, e.wid]}
   end
 end
 
-module MultiKeyWrites
+module AtomicBatchWrites
   include Dependencies
   include SerialWriteConstraint
   state do
     # inputs
-    table :write, [:wid] => [:xact, :key, :val]
-    table :commit, [:xact]
+    table :write, [:wid] => [:batch, :name, :val]
+    table :commit, [:batch]
     # internal state
-    table :write_log, [:wid] => [:xact, :key, :val, :prev_wid]
+    table :write_log, [:wid] => [:batch, :name, :val, :prev_wid]
     # views
     scratch :live, write_log.schema
     scratch :write_commit_event, write.schema
   end
 
   bloom do
-    write_commit_event <= (write * commit).pairs(:xact => :xact){|w,s| w}.notin(write_log, 0 => :wid)
-    write_log <+ (write_commit_event * live).pairs(:key => :key){|e, l| [e.wid, e.xact, e.key, e.val, l.wid]}
+    write_commit_event <= (write * commit).pairs(:batch => :batch){|w,s| w}.notin(write_log, 0 => :wid)
+    write_log <+ (write_commit_event * live).pairs(:name => :name){|e, l| [e.wid, e.batch, e.name, e.val, l.wid]}
   end
 end
 
-module ReadTabs
-  # separated because reused in dev.rb
+module AtomicReads
+  include AtomicBatchWrites
   state do
-    # input
-    table :read, [:xact, :key]
-    range :read_commit, [:xact]
-  
-    # internal
-    table :snapshot, [:effective, :wid, :xact, :key, :val, :prev_wid]
+    table :read, [:batch, :name]
+    range :read_commit, [:batch]
+
+    table :snapshot, [:effective, :wid, :batch, :name, :val, :prev_wid]
+    range :snapshot_exists, [:batch]
 
     scratch :read_event, read.schema
     scratch :read_commit_event, read.schema
     scratch :read_view, snapshot.schema
   end
-end
 
-module SimplerMultiKeyReads
-  include MultiKeyWrites
-  include ReadTabs
-  state do
-    range :snapshot_exists, [:xact]
-  end
   bloom do
     snapshot_exists <= snapshot{|r| [r.effective]}
-    read_event <= read.notin(snapshot_exists, :xact => :xact)
-    snapshot <+ (read_event * live).pairs{|r, l| [r.xact] + l}
-    read_view <= snapshot.notin(read_commit, :effective => :xact)
+    read_event <= read.notin(snapshot_exists, :batch => :batch)
+    snapshot <+ (read_event * live).pairs{|r, l| [r.batch] + l}
+    read_view <= snapshot.notin(read_commit, :effective => :batch)
   end
 end
