@@ -31,9 +31,8 @@ class NormalCausalKvsReplica
   end
 
   bloom :view do
-    same_key <= (safe_log * safe_log).pairs(:key => :key) {|w1,w2| [w1.id, w2.id] if w1.id < w2.id}
+    same_key <= (safe_log * safe_log).pairs(:key => :key) {|w1,w2| [w1.id, w2.id] if w1 != w2}
     dominated <= (same_key * dep).lefts(:w1 => :id, :w2 => :target) {|w| [w.w2]}
-    dominated <= (same_key * dep).lefts(:w2 => :id, :w1 => :target) {|w| [w.w1]}
     view <= safe_log.notin(dominated, :id => :id)
   end
 
