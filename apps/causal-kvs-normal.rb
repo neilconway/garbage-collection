@@ -26,7 +26,7 @@ class NormalCausalKvsReplica
     # Check write dependencies. We can declare that a write is "safe" when all
     # of the write's dependencies are safe and the dependency list has been
     # sealed.
-    missing_dep <= dep.notin(safe_log, 1 => :id)
+    missing_dep <= dep.notin(safe_log, :target => :id)
     safe_log <+ (log * log_commit).lefts(:id => :id).notin(missing_dep, 0 => :id)
   end
 
