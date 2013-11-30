@@ -45,6 +45,8 @@ class NormalCausalKvsReplica
     # Check write dependencies. We can declare that a write is "safe" when all
     # of the write's dependencies are safe and the dependency list has been
     # sealed.
+    # XXX: Would be nice to avoid the explicit negation against safe_log when
+    # defining pending_log.
     pending_log <= log.notin(safe_log)
     missing_dep <= dep.notin(safe_log, :target => :id)
     safe_log <+ (pending_log * log_commit).lefts(:id => :id).notin(missing_dep, 0 => :id)
@@ -52,7 +54,7 @@ class NormalCausalKvsReplica
 
   bloom :view do
     same_key <= (safe_log * safe_log).pairs(:key => :key) {|w1,w2| [w1.id, w2.id] if w1 != w2}
-    dominated <= (same_key * dep).lefts(:w1 => :id, :w2 => :target) {|w| [w.w2]}
+    dominated <= (same_key * dep).rights(:w1 => :id, :w2 => :target) {|d| [d.target]}
     view <= safe_log.notin(dominated, :id => :id)
   end
 
