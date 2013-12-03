@@ -22,8 +22,8 @@ module AtomicRegister
 
   bloom do
     write_event <= write.notin(write_log, :wid => :wid).argagg(:min, [:name], :wid)
-    write_log <+ (write_event * live).pairs(:name => :name) do |e, l|
-      e + [l.wid]
+    write_log <+ (write_event * live).outer(:name => :name) do |e, l|
+      e + [l.wid.nil? ? 0 : l.wid]
     end
   end
 end
@@ -55,7 +55,7 @@ module AtomicBatchWrites
 
   bloom do
     write_commit_event <= (write * commit).pairs(:batch => :batch){|w,s| w}.notin(write_log, 0 => :wid)
-    write_log <+ (write_commit_event * live).pairs(:name => :name){|e, l| [e.wid, e.batch, e.name, e.val, l.wid]}
+    write_log <+ (write_commit_event * live).outer(:name => :name){|e, l| [e.wid, e.batch, e.name, e.val, l.wid.nil? ? 0 : l.wid]}
   end
 end
 
