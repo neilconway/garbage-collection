@@ -119,17 +119,16 @@ class TestMVCCs < Minitest::Test
     do_read(m, 200, 'banquo')
     assert_equal([[3, 3, "banquo", "dead but gets kings", 0], [10, 100, "foo", "baz", 1],[11, 100, "peter", "thane of cawdor", 2]], m.live.to_a.sort)
     m.read_commit <+ [[200]]
-    #4.times{m.tick}
-    #2.times{m.tick}
-    m.tick
+    2.times{m.tick}
     assert_equal([], s.read.to_a)
   end
 
   def test_readpath
-    m = MultiReadWrite.new
+    m = MultiReadWrite.new(:print_rules => true)
     boots(m)
     multiread_common(m)
     # irrelevant entries GC'd
+
     assert_equal([[300, 3, 3, "banquo", "dead but gets kings", 0], [300, 10, 100, "foo", "baz", 1], [300, 11, 100, "peter", "thane of cawdor", 2]], m.snapshot.to_a.sort, "irrelevant snapshot entries")
     m.read_commit <+ [[300]]
     2.times{m.tick}
