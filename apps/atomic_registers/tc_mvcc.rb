@@ -1,7 +1,7 @@
 require 'rubygems'
 gem 'minitest'
 require 'minitest/autorun'
-require './mvcc_evo'
+require './atomic_registers_complete'
 
 def boots(cls)
   cls.write <+ [[1, 1, "foo", "bar"],
@@ -124,7 +124,7 @@ class TestMVCCs < Minitest::Test
   end
 
   def test_readpath
-    m = MultiReadWrite.new(:print_rules => true)
+    m = MultiReadWrite.new
     boots(m)
     multiread_common(m)
     # irrelevant entries GC'd
