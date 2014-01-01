@@ -69,26 +69,35 @@ class NormalCausalKvsReplica
   end
 end
 
-n = NormalCausalKvsReplica.new(:disable_rse => false)
+n = NormalCausalKvsReplica.new(:print_rules => true)
 n.log <+ [[5, "foo", "bar"]]
 2.times { n.tick }
-n.print_state
+#n.print_state
 
+# Commit 5; log(5) should be reclaimed because we have safe_log(5).
 n.log_commit <+ [[5]]
-2.times { n.tick }
+3.times { n.tick }
 n.print_state
 
 n.log <+ [[6, "foo", "baz"]]
 n.dep <+ [[6, 5]]
 2.times { n.tick }
-n.print_state
+#n.print_state
 
+# Commit 6; 6 dominates 5, so we should be able to discard safe_log(5),
+# dominated(5), and dep(6,5).
 n.log_commit <+ [[6]]
-2.times { n.tick }
+3.times { n.tick }
 n.print_state
 
-n.log <+ [[7, "foo", "qux"], [8, "foo", "qux2"]]
-n.dep <+ [[8, 7]]
-n.log_commit <+ [[8]]
-2.times { n.tick }
+n.log <+ [[10, "foo", "qux2"]]
+n.dep <+ [[10, 6]]
+n.log_commit <+ [[10]]
+3.times { n.tick }
 n.print_state
+
+# n.log <+ [[7, "foo", "qux"], [8, "foo", "qux2"]]
+# n.dep <+ [[8, 7]]
+# n.log_commit <+ [[8]]
+# 2.times { n.tick }
+# n.print_state
