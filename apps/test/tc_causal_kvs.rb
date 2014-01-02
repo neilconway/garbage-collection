@@ -95,10 +95,41 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       assert_equal([].to_set, r.safe_dep.to_set)
       assert_equal([[first.id(9), "foo", "bar9"]].to_set,
                    r.safe.to_set)
+      assert_equal([[first.id(9), "foo", "bar9"]].to_set,
+                   r.view.to_set)
 
       assert_equal(10, r.safe_keys.length)
       assert_equal(1, r.safe_keys.physical_size)
 
+    end
+
+    rlist.each(&:stop)
+  end
+
+  def test_causal_concurrent
+    rlist = make_cluster
+
+    # Writes:
+    #   (W1)  qux -> baz, deps = []
+    #   (W2)  foo -> bar, deps = [W1]
+    #   (W2') foo -> baz, deps = [W1]
+    first = rlist.first
+    last = rlist.last
+    first.do_write(first.id(1), "qux", "baz")
+    first.do_write(first.id(2), "foo", "bar", [first.id(1)])
+    last.do_write(last.id(1), "foo", "baz", [first.id(1)])
+
+    15.times { rlist.each(&:tick); sleep 0.1 }
+
+    check_convergence(rlist)
+    rlist.each do |r|
+      assert_equal([].to_set, r.log.to_set)
+      assert_equal([].to_set, r.dom.to_set)
+      assert_equal([].to_set, r.dep.to_set)
+      assert_equal([].to_set, r.safe_dep.to_set)
+      assert_equal([[first.id(1), "qux", "baz"],
+                    [first.id(2), "foo", "bar"],
+                    [last.id(1), "foo", "baz"]].to_set, r.view.to_set)
     end
 
     rlist.each(&:stop)
