@@ -112,7 +112,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
   def check_convergence(rlist)
     first = rlist.first
     state = [:log, :safe, :safe_keys, :dom, :view, :dep, :safe_dep,
-             :seal_dep_id, :seal_read_dep_id, :read_buf, :read_dep, :read_desp]
+             :seal_dep_id, :read_buf, :read_dep, :read_resp]
     rlist.each do |r|
       next if r == first
 
