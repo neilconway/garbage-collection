@@ -1,14 +1,14 @@
 require 'rubygems'
 require 'bud'
 
-class CausalHack
+class CausalKvsReplica
   include Bud
 
   state do
     # Replication state
     sealed :node, [:addr]
     channel :log_chn, [:@addr, :id] => [:key, :val]
-    channel :dep_chn, [:@addr, :id, :target] => [:src_key, :target_key]
+    channel :dep_chn, [:@addr, :id, :target]
     channel :seal_dep_id_chn, [:@addr, :id]
 
     # Representation of write operations
@@ -98,6 +98,22 @@ class CausalHack
     read_result <= resp_chn
   end
 
+  def do_write(id, key, val, write_deps=[])
+    self.log <+ [[id, key, val]]
+    write_deps.each do |d|
+      self.dep <+ [[id, d]]
+    end
+    self.seal_dep_id <+ [[id]]
+  end
+
+  def do_read(addr, id, key, read_deps=[])
+    self.read_req <+ [[addr, id, key]]
+    read_deps.each do |d|
+      self.read_req_dep <+ [[addr, id, d]]
+    end
+    self.read_req_seal_dep_id <+ [[addr, id]]
+  end
+
   def print_view
     c = self
     puts "VIEW: #{c.view.to_set.inspect}"
@@ -110,81 +126,81 @@ class CausalHack
   end
 end
 
-c = CausalHack.new(:print_rules => true)
+# c = CausalKvsReplica.new(:print_rules => true)
 
-# Test cases. First, check basic behavior. Writes w/o seal_dep_id shouldn't be
-# applied.
-c.log <+ [[5, "foo"], [6, "bar"]]
-5.times { c.tick }
-c.print_view
-raise unless c.view.to_a.empty?
-raise unless c.safe.to_a.empty?
+# # Test cases. First, check basic behavior. Writes w/o seal_dep_id shouldn't be
+# # applied.
+# c.log <+ [[5, "foo"], [6, "bar"]]
+# 5.times { c.tick }
+# c.print_view
+# raise unless c.view.to_a.empty?
+# raise unless c.safe.to_a.empty?
 
-# Both writes have no deps => applied to view.
-c.seal_dep_id <+ [[5], [6]]
-5.times { c.tick }
-c.print_view
-raise unless c.safe.to_a.size == 2
-raise unless c.view.to_a.size == 2
-raise unless c.log.to_a.empty?
+# # Both writes have no deps => applied to view.
+# c.seal_dep_id <+ [[5], [6]]
+# 5.times { c.tick }
+# c.print_view
+# raise unless c.safe.to_a.size == 2
+# raise unless c.view.to_a.size == 2
+# raise unless c.log.to_a.empty?
 
-# Write 8 dominates write 5, but no seal_dep => 5 remains in view.
-c.log <+ [[8, "foo"]]
-c.dep <+ [[8, 5]]
-5.times { c.tick }
-c.print_view
-raise unless c.safe.to_a.size == 2
-raise unless c.view.to_a.size == 2
-raise unless c.log.to_a.size == 1
-raise unless c.dep.to_a.size == 1
-raise unless c.safe_dep.to_a.empty?
+# # Write 8 dominates write 5, but no seal_dep => 5 remains in view.
+# c.log <+ [[8, "foo"]]
+# c.dep <+ [[8, 5]]
+# 5.times { c.tick }
+# c.print_view
+# raise unless c.safe.to_a.size == 2
+# raise unless c.view.to_a.size == 2
+# raise unless c.log.to_a.size == 1
+# raise unless c.dep.to_a.size == 1
+# raise unless c.safe_dep.to_a.empty?
 
-# Seal deps for 8 => 8 now dominates 5.
-c.seal_dep_id <+ [[8]]
-5.times { c.tick }
-c.print_view
-raise unless c.safe.to_a.size == 2
-raise unless c.view.to_a.size == 2
-raise unless c.log.to_a.empty?
-raise unless c.dep.to_a.empty?
-raise unless c.safe_dep.to_a.empty?
-raise unless c.dom.to_a.empty?
+# # Seal deps for 8 => 8 now dominates 5.
+# c.seal_dep_id <+ [[8]]
+# 5.times { c.tick }
+# c.print_view
+# raise unless c.safe.to_a.size == 2
+# raise unless c.view.to_a.size == 2
+# raise unless c.log.to_a.empty?
+# raise unless c.dep.to_a.empty?
+# raise unless c.safe_dep.to_a.empty?
+# raise unless c.dom.to_a.empty?
 
-# Check that dependencies that do not result in dominating a write are still
-# reclaimed.
-c.dep <+ [[9, 8], [9, 6]]
-c.seal_dep_id <+ [[9]]
-5.times { c.tick }
-c.print_view
-raise unless c.safe.to_a.size == 2
-raise unless c.view.to_a.size == 2
-raise unless c.log.to_a.empty?
-raise unless c.dom.to_a.empty?
-raise unless c.safe_dep.to_a.empty?
-raise unless c.dep.to_a.size == 2
+# # Check that dependencies that do not result in dominating a write are still
+# # reclaimed.
+# c.dep <+ [[9, 8], [9, 6]]
+# c.seal_dep_id <+ [[9]]
+# 5.times { c.tick }
+# c.print_view
+# raise unless c.safe.to_a.size == 2
+# raise unless c.view.to_a.size == 2
+# raise unless c.log.to_a.empty?
+# raise unless c.dom.to_a.empty?
+# raise unless c.safe_dep.to_a.empty?
+# raise unless c.dep.to_a.size == 2
 
-c.log <+ [[9, "baz"]]
-5.times { c.tick }
-c.print_view
-puts "SAFE DEP: #{c.safe_dep.to_a.sort.inspect}"
-raise unless c.safe.to_a.size == 3
-raise unless c.view.to_a.size == 3
-raise unless c.log.to_a.empty?
-raise unless c.dep.to_a.empty?
-raise unless c.safe_dep.to_a.empty?
-raise unless c.dom.to_a.empty?
+# c.log <+ [[9, "baz"]]
+# 5.times { c.tick }
+# c.print_view
+# puts "SAFE DEP: #{c.safe_dep.to_a.sort.inspect}"
+# raise unless c.safe.to_a.size == 3
+# raise unless c.view.to_a.size == 3
+# raise unless c.log.to_a.empty?
+# raise unless c.dep.to_a.empty?
+# raise unless c.safe_dep.to_a.empty?
+# raise unless c.dom.to_a.empty?
 
-# Concurrent writes to the same key
-c.log <+ [[10, "baz"]]
-c.seal_dep_id <+ [[10]]
-5.times { c.tick }
-c.print_view
-raise unless c.safe.to_a.size == 4
-raise unless c.view.to_a.size == 4
-raise unless c.log.to_a.empty?
-raise unless c.dep.to_a.empty?
-raise unless c.safe_dep.to_a.empty?
-raise unless c.dom.to_a.empty?
+# # Concurrent writes to the same key
+# c.log <+ [[10, "baz"]]
+# c.seal_dep_id <+ [[10]]
+# 5.times { c.tick }
+# c.print_view
+# raise unless c.safe.to_a.size == 4
+# raise unless c.view.to_a.size == 4
+# raise unless c.log.to_a.empty?
+# raise unless c.dep.to_a.empty?
+# raise unless c.safe_dep.to_a.empty?
+# raise unless c.dom.to_a.empty?
 
 # c.log <+ [[8, "foo"]]
 # c.dep <+ [[8, 7, "foo", "foo"], [8, 6, "foo", "bar"]]
