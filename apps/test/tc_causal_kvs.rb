@@ -8,7 +8,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
   def make_cluster
     ports = (1..3).map {|i| i + 10001}
     addrs = ports.map {|p| "localhost:#{p}"}
-    rlist = ports.map {|p| CausalKvsReplica.new(@@opts.merge(:ip => "localhost", :port => p, :print_rules => (p == ports.first ? true : false), :print_state => (p == ports.first ? true : false)))}
+    rlist = ports.map {|p| CausalKvsReplica.new(@@opts.merge(:ip => "localhost", :port => p))}
     rlist.each {|r| r.node <+ addrs.map {|a| [a]}}
     rlist
   end
@@ -41,11 +41,6 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     last.do_write(last.id(5), 'baz', 'kkk3', [last.id(2), last.id(4)])
     last.do_write(last.id(6), 'qux', 'xxx', [last.id(5)])
     last.do_write(last.id(7), 'baz', 'kkk4', [last.id(6), last.id(5)])
-    # last.log <+ [[last.id(3), 'baz', 'kkk', []],
-    #              [last.id(4), 'baz', 'kkk2', [last.id(3)]],
-    #              [last.id(5), 'baz', 'kkk3', [last.id(2), last.id(4)]],
-    #              [last.id(6), 'qux', 'xxx', [last.id(5)]],
-    #              [last.id(7), 'baz', 'kkk4', [last.id(6), last.id(5)]]]
 
     c = CausalKvsReplica.new(@@opts)
     c.do_read(last.ip_port, c.id(1), 'foo', [first.id(1)])
@@ -95,15 +90,15 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       assert_equal([].to_set, r.read_buf.to_set)
       assert_equal([].to_set, r.read_resp.to_set)
       assert_equal([].to_set, r.log.to_set)
+      assert_equal([].to_set, r.dom.to_set)
+      assert_equal([].to_set, r.dep.to_set)
+      assert_equal([].to_set, r.safe_dep.to_set)
+      assert_equal([[first.id(9), "foo", "bar9"]].to_set,
+                   r.safe.to_set)
 
       assert_equal(10, r.safe_keys.length)
       assert_equal(1, r.safe_keys.physical_size)
 
-      assert_equal([[first.id(9), "foo", "bar9"]].to_set,
-                   r.safe.to_set)
-      assert_equal([].to_set, r.dom.to_set)
-      assert_equal([].to_set, r.dep.to_set)
-      assert_equal([].to_set, r.safe_dep.to_set)
     end
 
     rlist.each(&:stop)
