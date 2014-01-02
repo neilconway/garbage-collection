@@ -73,7 +73,6 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       # We expect 7 logical elements in safe, but we only need to store 2
       assert_equal(7, r.safe_keys.length)
       assert_equal(2, r.safe_keys.physical_size)
-
     end
 
     all_nodes.each(&:stop)
@@ -85,7 +84,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     first = rlist.first
     deps = []
     10.times do |i|
-      first.log <+ [[first.id(i), "foo", "bar#{i}", deps]]
+      first.do_write(first.id(i), "foo", "bar#{i}", deps)
       deps = [first.id(i)]
     end
 
@@ -97,12 +96,14 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       assert_equal([].to_set, r.read_resp.to_set)
       assert_equal([].to_set, r.log.to_set)
 
-      assert_equal(10, r.safe.length)
-      assert_equal(1, r.safe.physical_size)
+      assert_equal(10, r.safe_keys.length)
+      assert_equal(1, r.safe_keys.physical_size)
 
-      assert_equal([[first.id(9), "foo", "bar9", [first.id(8)]]].to_set,
-                   r.safe_log.to_set)
-      assert_equal([].to_set, r.dominated.to_set)
+      assert_equal([[first.id(9), "foo", "bar9"]].to_set,
+                   r.safe.to_set)
+      assert_equal([].to_set, r.dom.to_set)
+      assert_equal([].to_set, r.dep.to_set)
+      assert_equal([].to_set, r.safe_dep.to_set)
     end
 
     rlist.each(&:stop)
@@ -110,14 +111,15 @@ class TestCausalKvs < MiniTest::Unit::TestCase
 
   def check_convergence(rlist)
     first = rlist.first
-    state = [:log, :safe, :safe_keys, :dom, :view]
+    state = [:log, :safe, :safe_keys, :dom, :view, :dep, :safe_dep,
+             :seal_dep_id, :seal_read_dep_id, :read_buf, :read_dep, :read_desp]
     rlist.each do |r|
       next if r == first
 
       state.each do |t|
         r_t = r.tables[t]
         first_t = first.tables[t]
-        assert_equal(first_t.to_set, r_t.to_set)
+        assert_equal(first_t.to_set, r_t.to_set, "t = #{t}")
       end
     end
   end
