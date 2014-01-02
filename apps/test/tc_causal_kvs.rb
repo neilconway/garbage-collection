@@ -60,17 +60,20 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     rlist.each do |r|
       assert_equal([].to_set, r.read_buf.to_set)
       assert_equal([].to_set, r.read_resp.to_set)
+      assert_equal([].to_set, r.read_dep.to_set)
       assert_equal([].to_set, r.log.to_set)
-      assert_equal([[first.id(1), 'foo', 'bar', []],
-                    [last.id(6), 'qux', 'xxx', [last.id(5)]],
-                    [last.id(7), 'baz', 'kkk4', [last.id(6), last.id(5)]]].to_set,
-                   r.safe_log.to_set)
+      assert_equal([].to_set, r.dom.to_set)
+      assert_equal([].to_set, r.dep.to_set)
+      assert_equal([].to_set, r.safe_dep.to_set)
+      assert_equal([[first.id(1), 'foo', 'bar'],
+                    [last.id(6), 'qux', 'xxx'],
+                    [last.id(7), 'baz', 'kkk4']].to_set,
+                   r.safe.to_set)
 
       # We expect 7 logical elements in safe, but we only need to store 2
-      assert_equal(7, r.safe.length)
-      assert_equal(2, r.safe.physical_size)
+      assert_equal(7, r.safe_keys.length)
+      assert_equal(2, r.safe_keys.physical_size)
 
-      assert_equal([].to_set, r.dominated.to_set)
     end
 
     all_nodes.each(&:stop)

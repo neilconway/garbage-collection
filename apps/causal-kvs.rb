@@ -34,7 +34,7 @@ class CausalKvsReplica
     # Server-side read state
     table :read_buf, [:id] => [:key, :src_addr]
     table :read_dep, [:id, :target]
-    table :seal_read_dep_id, [:id]
+    range :seal_read_dep_id, [:id]
     scratch :read_pending, read_buf.schema
     scratch :missing_read_dep, read_dep.schema
     scratch :safe_read, read_buf.schema
