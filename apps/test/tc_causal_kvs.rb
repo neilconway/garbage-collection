@@ -49,17 +49,12 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     15.times { all_nodes.each(&:tick); sleep 0.1 }
 
     check_convergence(rlist)
+    check_empty(rlist, :read_buf, :read_resp, :read_dep, :log,
+                :dom, :dep, :safe_dep)
     assert_equal([].to_set, c.read_req.to_set)
     assert_equal([[c.ip_port, c.id(1), 'foo', 'bar']].to_set,
                  c.read_result.to_set)
     rlist.each do |r|
-      assert_equal([].to_set, r.read_buf.to_set)
-      assert_equal([].to_set, r.read_resp.to_set)
-      assert_equal([].to_set, r.read_dep.to_set)
-      assert_equal([].to_set, r.log.to_set)
-      assert_equal([].to_set, r.dom.to_set)
-      assert_equal([].to_set, r.dep.to_set)
-      assert_equal([].to_set, r.safe_dep.to_set)
       assert_equal([[first.id(1), 'foo', 'bar'],
                     [last.id(6), 'qux', 'xxx'],
                     [last.id(7), 'baz', 'kkk4']].to_set,
@@ -86,13 +81,8 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     15.times { rlist.each(&:tick); sleep 0.1 }
 
     check_convergence(rlist)
+    check_empty(rlist, :read_buf, :read_resp, :log, :dom, :dep, :safe_dep)
     rlist.each do |r|
-      assert_equal([].to_set, r.read_buf.to_set)
-      assert_equal([].to_set, r.read_resp.to_set)
-      assert_equal([].to_set, r.log.to_set)
-      assert_equal([].to_set, r.dom.to_set)
-      assert_equal([].to_set, r.dep.to_set)
-      assert_equal([].to_set, r.safe_dep.to_set)
       assert_equal([[first.id(9), "foo", "bar9"]].to_set,
                    r.safe.to_set)
       assert_equal([[first.id(9), "foo", "bar9"]].to_set,
@@ -100,7 +90,6 @@ class TestCausalKvs < MiniTest::Unit::TestCase
 
       assert_equal(10, r.safe_keys.length)
       assert_equal(1, r.safe_keys.physical_size)
-
     end
 
     rlist.each(&:stop)
@@ -122,17 +111,47 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     15.times { rlist.each(&:tick); sleep 0.1 }
 
     check_convergence(rlist)
+    check_empty(rlist, :log, :dom, :dep, :safe_dep)
     rlist.each do |r|
-      assert_equal([].to_set, r.log.to_set)
-      assert_equal([].to_set, r.dom.to_set)
-      assert_equal([].to_set, r.dep.to_set)
-      assert_equal([].to_set, r.safe_dep.to_set)
       assert_equal([[first.id(1), "qux", "baz"],
                     [first.id(2), "foo", "bar"],
                     [last.id(1), "foo", "baz"]].to_set, r.view.to_set)
     end
 
+    # Writes:
+    #   (W3) foo -> baxxx, deps = [W2, W2']
+    last.do_write(last.id(2), "foo", "baxxx", [first.id(2), last.id(1)])
+    15.times { rlist.each(&:tick); sleep 0.1 }
+
+    check_convergence(rlist)
+    check_empty(rlist, :log, :dom, :dep, :safe_dep)
+    rlist.each do |r|
+      assert_equal([[first.id(1), "qux", "baz"],
+                    [last.id(2), "foo", "baxxx"]].to_set, r.view.to_set)
+    end
+
+    # Writes:
+    #   (W4) qux -> baxxx, deps = [W1, W2']
+    last.do_write(last.id(3), "qux", "baxxx", [first.id(1), last.id(1)])
+    15.times { rlist.each(&:tick); sleep 0.1 }
+
+    check_convergence(rlist)
+    check_empty(rlist, :log, :dom, :dep, :safe_dep)
+    rlist.each do |r|
+      assert_equal([[last.id(3), "qux", "baxxx"],
+                    [last.id(2), "foo", "baxxx"]].to_set, r.view.to_set)
+    end
+
     rlist.each(&:stop)
+  end
+
+  def test_read_with_bad_deps
+  end
+
+  def test_dom_with_bad_deps
+  end
+
+  def test_dep_on_different_key
   end
 
   def check_convergence(rlist)
@@ -146,6 +165,14 @@ class TestCausalKvs < MiniTest::Unit::TestCase
         r_t = r.tables[t]
         first_t = first.tables[t]
         assert_equal(first_t.to_set, r_t.to_set, "t = #{t}")
+      end
+    end
+  end
+
+  def check_empty(rlist, *rels)
+    rlist.each do |r|
+      rels.each do |rel|
+        assert_equal([].to_set, r.tables[rel].to_set)
       end
     end
   end
