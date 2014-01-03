@@ -80,8 +80,8 @@ class CausalKvsReplica
 
   bloom :read_server do
     read_buf <= req_chn {|r| [r.id, r.key, r.source_addr]}
-    read_dep <= req_dep_chn {|d| [d.id, d.target]}
-    seal_read_dep_id <= req_seal_dep_id_chn {|s| [s.id]}
+    read_dep <= req_dep_chn.payloads
+    seal_read_dep_id <= req_seal_dep_id_chn.payloads
 
     read_pending <= read_buf.notin(read_resp, :id => :id)
     missing_read_dep <= read_dep.notin(safe_keys, :target => :id)
