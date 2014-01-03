@@ -7,7 +7,7 @@ set xlabel "Time (s)"
 set key bottom right
 
 set output "fig/partition-bench.pdf"
-plot [*:200] "partition_data.summary" using 1:2 title "" w lines
+plot [*:200] "partition_data/partition_data.summary" using 1:2 title "" w lines
 
 set output "fig/update-gc-bench.pdf"
 set key bottom right  font ",14"

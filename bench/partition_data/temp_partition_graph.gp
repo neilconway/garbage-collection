@@ -9,7 +9,7 @@ set style line 3 lt rgb "#5060D0" lw 2 pt 2
 set style line 4 lt rgb "#F25900" lw 2 pt 9
 
 set output "gc-partition-bench.jpeg"
-plot [*:200] "partition.data" using 1:2 title "" w lines
+plot [*:200] "partition_data.summary" using 1:2 title "" w lines
 
 
 
