@@ -18,18 +18,37 @@ def gen_data(size, percent)
   data
 end
 
-def gen_dom_data(size, start_index)
+def old_gen_dom_data(size, start_index)
   data = []
   deps = []
   size.times do |i|
     data << [i + start_index, "foo", "bar#{i}", deps]
     deps = [i + start_index]
   end
+  p data
   data
 end
 
-def gen_incremental_update(size, percent)
+def gen_dom_data(size, start_index)
   data = []
+  deps = []
+  seals = []
+  size.times do |i|
+    data << [i + start_index, "foo", "bar#{i}"]
+    deps << [i + start_index, i + start_index - 1]
+    seals << [i + start_index]
+  end
+  deps[0] = []
+  return data, deps, seals
+end
+
+def gen_incremental_update(size, percent)
+  #id, key, val
+  data = []
+  #id_new, id_dep_on
+  deps = []
+  #id_new
+  seal_ids = []
   id = 0
   num_updates = ((percent.to_f / 100) * 10).to_i
   num_orig = 10 - num_updates
@@ -37,20 +56,28 @@ def gen_incremental_update(size, percent)
     update_id = id
     dep_id = id
     num_orig.times { 
-      data << [id, "foo#{id}", id, []]
+      data << [id, "foo#{id}", id]
+      deps << []
+      seal_ids << [id]
       id += 1
     }
     num_updates.times {
-      data << [id, "foo#{update_id}", id, [dep_id]]
+      data << [id, "foo#{update_id}", id]
+      deps << [id, dep_id]
+      seal_ids << [id]
       dep_id = id
       id += 1
     }
   end
-  data
+  p data
+  p deps
+  p seal_ids
+  return [data, deps, seal_ids]
 end
 
 def any_pending?(bud)
   bud.tables.each_value do |t|
+    next if t.tabname == :safe_dep
     return true if t.pending_work?
   end
   false
@@ -68,7 +95,9 @@ def no_partition_bench(data)
 end
 
 def no_partition_bench2(data, percent)
-  d = data
+  d = data[0].reverse
+  deps = data[1].reverse
+  seal_ids = data[2].reverse
   c = CausalKvsReplica.new
   storage = []
   converge_point = data.size - ((percent.to_f / 100) * data.size).to_i
@@ -76,7 +105,11 @@ def no_partition_bench2(data, percent)
   loop do
     before_insert = Time.now.to_f
     p before_insert
-    c.log <+ d.pop(50)
+    
+    c.log <+ d.pop(50).reverse
+    c.dep <+ deps.pop(50).reverse
+    c.seal_dep_id <+ seal_ids.pop(50).reverse
+
     while any_pending?(c)
       c.tick
     end
@@ -86,12 +119,12 @@ def no_partition_bench2(data, percent)
     if elapsed < 1
       sleep 1 - elapsed
     end
-    #if (start - Time.now.to_f).abs > 60
-    #  break
-    #end
-    if c.safe_log.to_a.size >= converge_point and c.log.to_a.size == 0
+    if (start - Time.now.to_f).abs > 30
       break
     end
+    #if c.safe_log.to_a.size >= converge_point and c.log.to_a.size == 0
+    #  break
+    #end
   end
   storage
 end
@@ -102,7 +135,11 @@ def partition_bench(size)
   last = rlist.last
   storage = []
   start = Time.now.to_f
-  data = gen_dom_data(size, 0).reverse
+  data = gen_dom_data(size, 0)
+  
+  d = data[0].reverse
+  deps = data[1].reverse
+  seals = data[2].reverse
   rate = []
   
   disconnect1 = true
@@ -115,17 +152,38 @@ def partition_bench(size)
   disconnect_time2 = -1
   connect_time2 = -1
 
-  data.size.times {
-    first.log <+ [data.pop]
+  d.size.times {
+
+    new_log = d.pop
+    new_dep = deps.pop
+    new_seal = seals.pop
+
+    #p "Log: #{new_log}"
+    #p "Dep: #{new_dep}"
+    #p "Seal: #{new_seal}"
+
+    if new_dep == []
+      first.do_write(new_log[0], new_log[1], new_log[2])  
+    else
+      first.do_write(new_log[0], new_log[1], new_log[2], [new_dep[1]])
+    end
+
+    #first.log <+ [new_log]
+    #first.dep <+ [new_dep]
+    #first.seal_dep_id <+ [new_seal]
     rate << Time.now.to_f
-    p "Data size: #{data.size}"
+    p "Data size: #{d.size}"
+    #p "Total size: #{num_tuples(first)}"
     while any_pending?(first) or any_pending?(last)
       rlist.each(&:tick)
     end
+
     sleep 0.1;
     storage << [(start - Time.now.to_f).abs, num_tuples(first)] 
-
+    p (start - Time.now.to_f).abs
+    
     if (start - Time.now.to_f).abs > 30 and disconnect1 == true
+      #p "disconnect1"
       disconnect_time = (start - Time.now.to_f).to_f
       first.disconnect_channels
       last.disconnect_channels
@@ -134,6 +192,7 @@ def partition_bench(size)
     end
 
     if (start - Time.now.to_f).abs > 80 and connect1 == true
+      #p "connect1"
       connect_time = (start - Time.now.to_f).to_f
       first.connect_channels
       last.connect_channels
@@ -141,6 +200,7 @@ def partition_bench(size)
     end
 
     if (start - Time.now.to_f).abs > 140 and disconnect2 == true
+      #p "disconnect2"
       disconnect_time2 = (start - Time.now.to_f).to_f
       first.disconnect_channels
       last.disconnect_channels
@@ -149,11 +209,19 @@ def partition_bench(size)
     end
 
     if (start - Time.now.to_f).abs > 170 and connect2 == true
+      #p "connect2"
       connect_time2 = (start - Time.now.to_f).to_f
       first.connect_channels
       last.connect_channels
       connect2 = false
     end
+
+    #puts "VIEW: #{first.view.to_set.inspect}"
+    #puts "log: #{first.log.to_a.size}"
+    #puts "dep: #{first.dep.to_a.size}"
+    #puts "safe_dep: #{first.safe_dep.to_a.size}"
+    #puts "dom: #{first.dom.to_a.size}"
+    #puts "safe: #{first.safe.to_a.size}"
 
     if (start - Time.now.to_f).abs > 200
       break
@@ -174,8 +242,9 @@ end
 
 def num_tuples(bud)
   puts "Log: #{bud.log.to_a.size}"
-  puts "safe_log: #{bud.safe_log.to_a.size}"
-  puts "safe: #{bud.safe.physical_size}"
+  #puts "safe_log: #{bud.safe_log.to_a.size}"
+  #puts "safe: #{bud.safe.physical_size}"
+  puts "dep_chn_approx: #{bud.dep_chn_approx.physical_size}"
   sizes = bud.app_tables.map do |t|
     if t.kind_of? Bud::BudRangeCompress
       t.physical_size
@@ -188,6 +257,7 @@ def num_tuples(bud)
   p sizes.reduce(:+)
   sizes.reduce(:+)
 end
+
 
 def bench(size, percent, variant)
   puts "Run #: size = #{size}, # percent = #{percent}, variant = #{variant}"
@@ -221,5 +291,8 @@ raise ArgumentError, "Usage: bench.rb number_updates percent_update variant" unl
 size, percent, variant = ARGV
 bench(size.to_i, percent.to_i, variant)
 
-#p gen_dom_data(10, 0)
+#p gen_dom_data(100, 0)
+#p old_gen_dom_data(10,0)
 #p gen_data_2(100, 90)
+#p old_gen_incremental_update(100,50)
+#gen_incremental_update(10, 50)
