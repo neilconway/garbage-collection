@@ -83,6 +83,10 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     assert_equal(1, c.req_chn_approx.physical_size)
 
     assert_equal(4, c.req_dep_chn_approx.length)
+    assert_equal(1, c.req_dep_chn_approx.physical_size)
+
+    assert_equal(3, c.req_seal_dep_id_chn_approx.length)
+    assert_equal(1, c.req_seal_dep_id_chn_approx.physical_size)
 
     all_nodes.each(&:stop)
   end
