@@ -75,6 +75,28 @@ def gen_incremental_update(size, percent)
   return [data, deps, seal_ids]
 end
 
+def old_gen_incremental_update(size, percent)
+  data = []
+  id = 0
+  num_updates = ((percent.to_f / 100) * 10).to_i
+  num_orig = 10 - num_updates
+  (size/10).times do
+    update_id = id
+    dep_id = id
+    num_orig.times { 
+      data << [id, "foo#{id}", id, []]
+      id += 1
+    }
+    num_updates.times {
+      data << [id, "foo#{update_id}", id, [dep_id]]
+      dep_id = id
+      id += 1
+    }
+  end
+  data
+end
+
+
 def any_pending?(bud)
   bud.tables.each_value do |t|
     next if t.tabname == :safe_dep
@@ -83,21 +105,11 @@ def any_pending?(bud)
   false
 end
 
-def no_partition_bench(data)
-  c = CausalKvsReplica.new
-  c.log <+ data
-  loop do
-    c.tick
-    break unless any_pending? c
-  end
-  raise unless c.log.to_a.empty? and c.dominated.to_a.empty? and c.safe.physical_size == 1
-  num_tuples(c)
-end
-
-def no_partition_bench2(data, percent)
-  d = data[0].reverse
-  deps = data[1].reverse
-  seal_ids = data[2].reverse
+def no_partition_bench(data, percent)
+  #d = data[0].reverse
+  #deps = data[1].reverse
+  #seal_ids = data[2].reverse
+  d = data.reverse
   c = CausalKvsReplica.new
   storage = []
   converge_point = data.size - ((percent.to_f / 100) * data.size).to_i
@@ -105,10 +117,20 @@ def no_partition_bench2(data, percent)
   loop do
     before_insert = Time.now.to_f
     p before_insert
+    batch = d.pop(50).reverse
+    p batch
+    batch.each do |b|
+      if b[3] == []
+        c.do_write(b[0], b[1], b[2])  
+      else
+        c.do_write(b[0], b[1], b[2], b[3])
+      end
+    end  
     
-    c.log <+ d.pop(50).reverse
-    c.dep <+ deps.pop(50).reverse
-    c.seal_dep_id <+ seal_ids.pop(50).reverse
+
+    #c.log <+ d.pop(50).reverse
+    #c.dep <+ deps.pop(50).reverse
+    #c.seal_dep_id <+ seal_ids.pop(50).reverse
 
     while any_pending?(c)
       c.tick
@@ -263,10 +285,6 @@ def bench(size, percent, variant)
   puts "Run #: size = #{size}, # percent = #{percent}, variant = #{variant}"
 
   case variant
-  when "no_partition_old"
-    data = gen_data(size, percent)
-    space_used = no_partition_bench(data)
-    $stderr.printf("%d %d %d\n", size, percent, space_used)
   when "partition"
     storage, disconnect, connect, disconnect2, connect2 = partition_bench(size)
     $stderr.printf("%f\n", disconnect.abs)
@@ -276,9 +294,9 @@ def bench(size, percent, variant)
     storage.each do |s|
       $stderr.printf("%f %d\n", s[0], s[1])
     end
-  when "no_partition_new"
-    data = gen_incremental_update(size, percent)
-    space_used = no_partition_bench2(data, percent)
+  when "no_partition"
+    data = old_gen_incremental_update(size, percent)
+    space_used = no_partition_bench(data, percent)
     space_used.each do |s|
       $stderr.printf("%f %d\n", s[0], s[1])
     end
