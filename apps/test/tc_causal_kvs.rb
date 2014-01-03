@@ -25,13 +25,14 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     #   (W6) qux -> xxx, {W5}
     #   (W7) baz -> kkk4, {W5,W6}
     #
-    # The final view should contain W1, W6, and W7. Note that if we implemented true
+    # The final view should contain W1, W5, and W7. Note that if we implemented true
     # causal consistency, we could omit the W5 dependency from W7, but that would
     # not yield the correct results.
     #
     # Reads:
     #   (1) foo, {W1}
     #   (2) baz, {W7}
+    #   (3) qux, {W3,W6}
     first = rlist.first
     first.do_write(first.id(1), 'foo', 'bar')
 
@@ -44,8 +45,9 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     last.do_write(last.id(7), 'baz', 'kkk4', [last.id(5), last.id(6)])
 
     c = CausalKvsReplica.new(@@opts)
-    c.do_read(last.ip_port, c.id(1), 'foo', [first.id(1)])
+    c.do_read(first.ip_port, c.id(1), 'foo', [first.id(1)])
     c.do_read(first.ip_port, c.id(2), 'baz', [last.id(7)])
+    c.do_read(first.ip_port, c.id(3), 'qux', [last.id(6), last.id(3)])
 
     all_nodes = rlist + [c]
     15.times { all_nodes.each(&:tick); sleep 0.1 }
@@ -73,8 +75,14 @@ class TestCausalKvs < MiniTest::Unit::TestCase
 
     check_empty([c], :read_req, :read_req_dep, :read_req_seal_dep_id)
     assert_equal([[c.ip_port, c.id(1), 'foo', 'bar'],
-                  [c.ip_port, c.id(2), 'baz', 'kkk4']].to_set,
+                  [c.ip_port, c.id(2), 'baz', 'kkk4'],
+                  [c.ip_port, c.id(3), 'qux', 'xxx']].to_set,
                  c.read_result.to_set)
+
+    assert_equal(3, c.req_chn_approx.length)
+    assert_equal(1, c.req_chn_approx.physical_size)
+
+    assert_equal(4, c.req_dep_chn_approx.length)
 
     all_nodes.each(&:stop)
   end
