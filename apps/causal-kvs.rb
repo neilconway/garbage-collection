@@ -27,13 +27,13 @@ class CausalKvsReplica
 
     # Read request/response protocol
     channel :req_chn, [:@addr, :id] => [:key]
-    channel :req_dep_chn, [:@addr, :id, :target]
+    channel :req_dep_chn, [:@addr, :dep_id] => [:id, :target]
     channel :req_seal_dep_id_chn, [:@addr, :id]
     channel :resp_chn, [:@addr, :id, :key, :val]
 
     # Server-side read state
     table :read_buf, [:id] => [:key, :src_addr]
-    table :read_dep, [:id, :target]
+    table :read_dep, [:dep_id] => [:id, :target]
     range :seal_read_dep_id, [:id]
     scratch :read_pending, read_buf.schema
     scratch :missing_read_dep, read_dep.schema
@@ -117,7 +117,7 @@ class CausalKvsReplica
   def do_read(addr, id, key, read_deps=[])
     self.read_req <+ [[addr, id, key]]
     read_deps.each do |d|
-      self.read_req_dep <+ [[addr, id, d]]
+      self.read_req_dep <+ [[addr, dep_id, id, d]]
     end
     self.read_req_seal_dep_id <+ [[addr, id]]
   end
