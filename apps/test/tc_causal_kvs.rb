@@ -81,7 +81,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     15.times { rlist.each(&:tick); sleep 0.1 }
 
     check_convergence(rlist)
-    check_empty(rlist, :read_buf, :read_resp, :log, :dom, :dep, :safe_dep)
+    check_empty(rlist, :log, :dom, :dep, :safe_dep)
     rlist.each do |r|
       assert_equal([[first.id(9), "foo", "bar9"]].to_set,
                    r.safe.to_set)
@@ -107,7 +107,6 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     first.do_write(first.id(1), "qux", "baz")
     first.do_write(first.id(2), "foo", "bar", [first.id(1)])
     last.do_write(last.id(1), "foo", "baz", [first.id(1)])
-
     15.times { rlist.each(&:tick); sleep 0.1 }
 
     check_convergence(rlist)
@@ -146,9 +145,46 @@ class TestCausalKvs < MiniTest::Unit::TestCase
   end
 
   def test_read_with_bad_deps
+    rlist = make_cluster
   end
 
   def test_dom_with_bad_deps
+    rlist = make_cluster
+
+    # Writes:
+    #   (W1) foo -> bar, deps = [W4]
+    #   (W2) baz -> qux, deps = []
+    #   (W3) baz -> qux2, deps = [W1, W2]
+    first = rlist.first
+    first.do_write(first.id(1), "foo", "bar", [first.id(4)])
+    first.do_write(first.id(2), "baz", "qux", [])
+    first.do_write(first.id(3), "baz", "qux2", [first.id(1), first.id(2)])
+    15.times { rlist.each(&:tick); sleep 0.1 }
+
+    check_convergence(rlist)
+    check_empty(rlist, :safe_dep, :dom)
+    rlist.each do |r|
+      assert_equal([[first.id(1), first.id(4)],
+                    [first.id(3), first.id(1)],
+                    [first.id(3), first.id(2)]].to_set, r.dep.to_set)
+      assert_equal([[first.id(2), "baz", "qux"]].to_set, r.view.to_set)
+      assert_equal([[first.id(2), "baz", "qux"]].to_set, r.safe.to_set)
+    end
+
+    # Writes:
+    #   (W4) baz -> qux3, deps = []
+    first.do_write(first.id(4), "baz", "qux3")
+    15.times { rlist.each(&:tick); sleep 0.1 }
+
+    check_convergence(rlist)
+    check_empty(rlist, :log, :dom, :dep, :safe_dep)
+    rlist.each do |r|
+      assert_equal([[first.id(1), "foo", "bar"],
+                    [first.id(4), "baz", "qux3"],
+                    [first.id(3), "baz", "qux2"]].to_set, r.view.to_set)
+    end
+
+    rlist.each(&:stop)
   end
 
   def test_dep_on_different_key
