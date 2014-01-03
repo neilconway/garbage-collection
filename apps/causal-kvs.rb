@@ -85,8 +85,8 @@ class CausalKvsReplica
 
     read_pending <= read_buf.notin(read_resp, :id => :id)
     missing_read_dep <= read_dep.notin(safe_keys, :target => :id)
-    safe_read <= (read_pending * seal_read_dep_id).lefts(:id => :id).notin(missing_read_dep, 0 => :id)
-    read_resp <+ (safe_read * view).pairs(:key => :key) {|r,v| [r.src_addr, r.id, r.key, v.val]}
+    safe_read <+ (read_pending * seal_read_dep_id).lefts(:id => :id).notin(missing_read_dep, 0 => :id)
+    read_resp <= (safe_read * view).pairs(:key => :key) {|r,v| [r.src_addr, r.id, r.key, v.val]}
     resp_chn <~ read_resp
   end
 

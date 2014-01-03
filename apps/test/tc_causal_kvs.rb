@@ -23,7 +23,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     #   (W4) baz -> kkk2, {W3}
     #   (W5) baz -> kkk3, {W2,W4}
     #   (W6) qux -> xxx, {W5}
-    #   (W7) baz -> kkk4, {W6,W5}
+    #   (W7) baz -> kkk4, {W5,W6}
     #
     # The final view should contain W1, W6, and W7. Note that if we implemented true
     # causal consistency, we could omit the W5 dependency from W7, but that would
@@ -31,6 +31,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     #
     # Reads:
     #   (1) foo, {W1}
+    #   (2) baz, {W7}
     first = rlist.first
     first.do_write(first.id(1), 'foo', 'bar')
 
@@ -40,10 +41,11 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     last.do_write(last.id(4), 'baz', 'kkk2', [last.id(3)])
     last.do_write(last.id(5), 'baz', 'kkk3', [last.id(2), last.id(4)])
     last.do_write(last.id(6), 'qux', 'xxx', [last.id(5)])
-    last.do_write(last.id(7), 'baz', 'kkk4', [last.id(6), last.id(5)])
+    last.do_write(last.id(7), 'baz', 'kkk4', [last.id(5), last.id(6)])
 
     c = CausalKvsReplica.new(@@opts)
     c.do_read(last.ip_port, c.id(1), 'foo', [first.id(1)])
+    c.do_read(first.ip_port, c.id(2), 'baz', [last.id(7)])
 
     all_nodes = rlist + [c]
     15.times { all_nodes.each(&:tick); sleep 0.1 }
@@ -51,14 +53,15 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     check_convergence(rlist)
     check_empty(rlist, :read_buf, :read_resp, :read_dep, :log,
                 :dom, :dep, :safe_dep)
-    assert_equal([].to_set, c.read_req.to_set)
-    assert_equal([[c.ip_port, c.id(1), 'foo', 'bar']].to_set,
-                 c.read_result.to_set)
     rlist.each do |r|
       assert_equal([[first.id(1), 'foo', 'bar'],
                     [last.id(6), 'qux', 'xxx'],
                     [last.id(7), 'baz', 'kkk4']].to_set,
                    r.safe.to_set)
+      assert_equal([[first.id(1), 'foo', 'bar'],
+                    [last.id(6), 'qux', 'xxx'],
+                    [last.id(7), 'baz', 'kkk4']].to_set,
+                   r.view.to_set)
 
       # We expect 7 logical elements in safe, but we only need to store 2
       assert_equal(7, r.safe_keys.length)
@@ -67,6 +70,11 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       assert_equal(7 * rlist.length, r.dep_chn_approx.length)
       assert_equal(1 * rlist.length, r.dep_chn_approx.physical_size)
     end
+
+    check_empty([c], :read_req, :read_req_dep, :read_req_seal_dep_id)
+    assert_equal([[c.ip_port, c.id(1), 'foo', 'bar'],
+                  [c.ip_port, c.id(2), 'baz', 'kkk4']].to_set,
+                 c.read_result.to_set)
 
     all_nodes.each(&:stop)
   end
@@ -155,6 +163,9 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       assert_equal(6 * rlist.size, r.dep_chn_approx.length)
       assert_equal(2 * rlist.size, r.dep_chn_approx.physical_size)
     end
+
+    # XXX: Check that both values are returned from a read of a key with two
+    # concurrent writes
 
     rlist.each(&:stop)
   end
