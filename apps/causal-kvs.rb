@@ -18,7 +18,7 @@ class CausalKvsReplica
 
     table :safe, log.schema
     range :safe_keys, [:id]
-    table :safe_dep, [:id, :target] => [:src_key]
+    table :safe_dep, [:target, :src_key]
     table :dom, [:id]
 
     scratch :pending, log.schema
@@ -33,7 +33,7 @@ class CausalKvsReplica
 
     # Server-side read state
     table :read_buf, [:id] => [:key, :src_addr]
-    table :read_dep, [:dep_id] => [:id, :target]
+    table :read_dep, [:id, :target]
     range :seal_read_dep_id, [:id]
     scratch :read_pending, read_buf.schema
     scratch :missing_read_dep, read_dep.schema
@@ -73,14 +73,14 @@ class CausalKvsReplica
     # graph. Hence, we make a simplifying assumption: a safe_log entry e for key
     # k includes a dependency on e', the most recent previous version of k that
     # the client was aware of.
-    safe_dep <= (dep * safe).pairs(:id => :id) {|d,s| [d.id, d.target, s.key]}
+    safe_dep <= (dep * safe).pairs(:id => :id) {|d,s| [d.target, s.key]}
     dom <+ (safe_dep * safe).lefts(:target => :id, :src_key => :key) {|d| [d.target]}.notin(dom, 0 => :id)
     view <= safe.notin(dom, :id => :id)
   end
 
   bloom :read_server do
     read_buf <= req_chn {|r| [r.id, r.key, r.source_addr]}
-    read_dep <= req_dep_chn.payloads
+    read_dep <= req_dep_chn {|d| [d.id, d.target]}
     seal_read_dep_id <= req_seal_dep_id_chn.payloads
 
     read_pending <= read_buf.notin(read_resp, :id => :id)
