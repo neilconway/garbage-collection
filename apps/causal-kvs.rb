@@ -8,12 +8,12 @@ class CausalKvsReplica
     # Replication state
     sealed :node, [:addr]
     channel :log_chn, [:@addr, :id] => [:key, :val]
-    channel :dep_chn, [:@addr, :id, :target]
+    channel :dep_chn, [:@addr, :dep_id] => [:id, :target]
     channel :seal_dep_id_chn, [:@addr, :id]
 
     # Representation of write operations
     table :log, [:id] => [:key, :val]
-    table :dep, [:id, :target]
+    table :dep, [:dep_id] => [:id, :target]
     range :seal_dep_id, [:id]
 
     table :safe, log.schema
@@ -73,7 +73,7 @@ class CausalKvsReplica
     # graph. Hence, we make a simplifying assumption: a safe_log entry e for key
     # k includes a dependency on e', the most recent previous version of k that
     # the client was aware of.
-    safe_dep <= (dep * safe).pairs(:id => :id) {|d,s| d + [s.key]}
+    safe_dep <= (dep * safe).pairs(:id => :id) {|d,s| [d.id, d.target, s.key]}
     dom <+ (safe_dep * safe).lefts(:target => :id, :src_key => :key) {|d| [d.target]}.notin(dom, 0 => :id)
     view <= safe.notin(dom, :id => :id)
   end
@@ -98,10 +98,18 @@ class CausalKvsReplica
     read_result <= resp_chn
   end
 
+  def dep_id
+    @next_dep_id ||= 0
+    rv = id(@next_dep_id)
+    @next_dep_id += 1
+    return rv
+  end
+
   def do_write(id, key, val, write_deps=[])
     self.log <+ [[id, key, val]]
     write_deps.each do |d|
-      self.dep <+ [[id, d]]
+      d_id = dep_id
+      self.dep <+ [[d_id, id, d]]
     end
     self.seal_dep_id <+ [[id]]
   end

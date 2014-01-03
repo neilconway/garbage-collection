@@ -65,6 +65,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       assert_equal(2, r.safe_keys.physical_size)
 
       assert_equal(7 * rlist.length, r.dep_chn_approx.length)
+      assert_equal(1 * rlist.length, r.dep_chn_approx.physical_size)
     end
 
     all_nodes.each(&:stop)
@@ -94,6 +95,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       assert_equal(1, r.safe_keys.physical_size)
 
       assert_equal(9 * rlist.size, r.dep_chn_approx.length)
+      assert_equal(1 * rlist.size, r.dep_chn_approx.physical_size)
     end
 
     rlist.each(&:stop)
@@ -121,6 +123,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
                     [last.id(1), "foo", "baz"]].to_set, r.view.to_set)
 
       assert_equal(2 * rlist.size, r.dep_chn_approx.length)
+      assert_equal(2 * rlist.size, r.dep_chn_approx.physical_size)
     end
 
     # Writes:
@@ -135,6 +138,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
                     [last.id(2), "foo", "baxxx"]].to_set, r.view.to_set)
 
       assert_equal(4 * rlist.size, r.dep_chn_approx.length)
+      assert_equal(2 * rlist.size, r.dep_chn_approx.physical_size)
     end
 
     # Writes:
@@ -149,6 +153,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
                     [last.id(2), "foo", "baxxx"]].to_set, r.view.to_set)
 
       assert_equal(6 * rlist.size, r.dep_chn_approx.length)
+      assert_equal(2 * rlist.size, r.dep_chn_approx.physical_size)
     end
 
     rlist.each(&:stop)
@@ -174,9 +179,11 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     check_convergence(rlist)
     check_empty(rlist, :safe_dep, :dom)
     rlist.each do |r|
+      # Project the (opaque) dep_id field out of the dep table first
+      dep_useful = r.dep.map {|d| [d.id, d.target]}
       assert_equal([[first.id(1), first.id(4)],
                     [first.id(3), first.id(1)],
-                    [first.id(3), first.id(2)]].to_set, r.dep.to_set)
+                    [first.id(3), first.id(2)]].to_set, dep_useful.to_set)
       assert_equal([[first.id(2), "baz", "qux"]].to_set, r.view.to_set)
       assert_equal([[first.id(2), "baz", "qux"]].to_set, r.safe.to_set)
     end
