@@ -63,6 +63,8 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       # We expect 7 logical elements in safe, but we only need to store 2
       assert_equal(7, r.safe_keys.length)
       assert_equal(2, r.safe_keys.physical_size)
+
+      assert_equal(7 * rlist.length, r.dep_chn_approx.length)
     end
 
     all_nodes.each(&:stop)
@@ -90,12 +92,14 @@ class TestCausalKvs < MiniTest::Unit::TestCase
 
       assert_equal(10, r.safe_keys.length)
       assert_equal(1, r.safe_keys.physical_size)
+
+      assert_equal(9 * rlist.size, r.dep_chn_approx.length)
     end
 
     rlist.each(&:stop)
   end
 
-  def test_causal_concurrent
+  def test_concurrent_writes
     rlist = make_cluster
 
     # Writes:
@@ -115,6 +119,8 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       assert_equal([[first.id(1), "qux", "baz"],
                     [first.id(2), "foo", "bar"],
                     [last.id(1), "foo", "baz"]].to_set, r.view.to_set)
+
+      assert_equal(2 * rlist.size, r.dep_chn_approx.length)
     end
 
     # Writes:
@@ -127,6 +133,8 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     rlist.each do |r|
       assert_equal([[first.id(1), "qux", "baz"],
                     [last.id(2), "foo", "baxxx"]].to_set, r.view.to_set)
+
+      assert_equal(4 * rlist.size, r.dep_chn_approx.length)
     end
 
     # Writes:
@@ -139,6 +147,8 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     rlist.each do |r|
       assert_equal([[last.id(3), "qux", "baxxx"],
                     [last.id(2), "foo", "baxxx"]].to_set, r.view.to_set)
+
+      assert_equal(6 * rlist.size, r.dep_chn_approx.length)
     end
 
     rlist.each(&:stop)
@@ -193,7 +203,8 @@ class TestCausalKvs < MiniTest::Unit::TestCase
   def check_convergence(rlist)
     first = rlist.first
     state = [:log, :safe, :safe_keys, :dom, :view, :dep, :safe_dep,
-             :seal_dep_id, :read_buf, :read_dep, :read_resp]
+             :seal_dep_id, :read_buf, :read_dep, :read_resp,
+             :log_chn_approx, :dep_chn_approx, :seal_dep_id_chn_approx]
     rlist.each do |r|
       next if r == first
 
