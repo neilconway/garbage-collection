@@ -59,21 +59,18 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       assert_equal([[first.id(1), 'foo', 'bar'],
                     [last.id(6), 'qux', 'xxx'],
                     [last.id(7), 'baz', 'kkk4']].to_set,
-                   r.safe.to_set)
+                   r.get_safe)
       assert_equal([[first.id(1), 'foo', 'bar'],
                     [last.id(6), 'qux', 'xxx'],
                     [last.id(7), 'baz', 'kkk4']].to_set,
-                   r.view.to_set)
+                   r.get_view)
 
       # We expect 7 logical elements in safe, but we only need to store 2
       assert_equal(7, r.safe_keys.length)
       assert_equal(2, r.safe_keys.physical_size)
-
-      assert_equal(7 * rlist.length, r.dep_chn_approx.length)
-      assert_equal(1 * rlist.length, r.dep_chn_approx.physical_size)
     end
 
-    check_empty([c], :read_req, :read_req_dep, :read_req_seal_dep_id)
+    check_empty([c], :read_req)
     assert_equal([[c.ip_port, c.id(1), 'foo', 'bar'],
                   [c.ip_port, c.id(2), 'baz', 'kkk4'],
                   [c.ip_port, c.id(3), 'qux', 'xxx']].to_set,
@@ -81,12 +78,6 @@ class TestCausalKvs < MiniTest::Unit::TestCase
 
     assert_equal(3, c.req_chn_approx.length)
     assert_equal(1, c.req_chn_approx.physical_size)
-
-    assert_equal(4, c.req_dep_chn_approx.length)
-    assert_equal(1, c.req_dep_chn_approx.physical_size)
-
-    assert_equal(3, c.req_seal_dep_id_chn_approx.length)
-    assert_equal(1, c.req_seal_dep_id_chn_approx.physical_size)
 
     all_nodes.each(&:stop)
   end
@@ -107,15 +98,12 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     check_empty(rlist, :log, :dom, :dep, :safe_dep)
     rlist.each do |r|
       assert_equal([[first.id(9), "foo", "bar9"]].to_set,
-                   r.safe.to_set)
+                   r.get_safe)
       assert_equal([[first.id(9), "foo", "bar9"]].to_set,
-                   r.view.to_set)
+                   r.get_view)
 
       assert_equal(10, r.safe_keys.length)
       assert_equal(1, r.safe_keys.physical_size)
-
-      assert_equal(9 * rlist.size, r.dep_chn_approx.length)
-      assert_equal(1 * rlist.size, r.dep_chn_approx.physical_size)
     end
 
     rlist.each(&:stop)
@@ -140,10 +128,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     rlist.each do |r|
       assert_equal([[first.id(1), "qux", "baz"],
                     [first.id(2), "foo", "bar"],
-                    [last.id(1), "foo", "baz"]].to_set, r.view.to_set)
-
-      assert_equal(2 * rlist.size, r.dep_chn_approx.length)
-      assert_equal(2 * rlist.size, r.dep_chn_approx.physical_size)
+                    [last.id(1), "foo", "baz"]].to_set, r.get_view)
     end
 
     # Writes:
@@ -155,10 +140,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     check_empty(rlist, :log, :dom, :dep, :safe_dep)
     rlist.each do |r|
       assert_equal([[first.id(1), "qux", "baz"],
-                    [last.id(2), "foo", "baxxx"]].to_set, r.view.to_set)
-
-      assert_equal(4 * rlist.size, r.dep_chn_approx.length)
-      assert_equal(2 * rlist.size, r.dep_chn_approx.physical_size)
+                    [last.id(2), "foo", "baxxx"]].to_set, r.get_view)
     end
 
     # Writes:
@@ -170,10 +152,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     check_empty(rlist, :log, :dom, :dep, :safe_dep)
     rlist.each do |r|
       assert_equal([[last.id(3), "qux", "baxxx"],
-                    [last.id(2), "foo", "baxxx"]].to_set, r.view.to_set)
-
-      assert_equal(6 * rlist.size, r.dep_chn_approx.length)
-      assert_equal(2 * rlist.size, r.dep_chn_approx.physical_size)
+                    [last.id(2), "foo", "baxxx"]].to_set, r.get_view)
     end
 
     # XXX: Check that both values are returned from a read of a key with two
@@ -202,13 +181,11 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     check_convergence(rlist)
     check_empty(rlist, :safe_dep, :dom)
     rlist.each do |r|
-      # Project the (opaque) dep_id field out of the dep table first
-      dep_useful = r.dep.map {|d| [d.id, d.target]}
       assert_equal([[first.id(1), first.id(4)],
                     [first.id(3), first.id(1)],
-                    [first.id(3), first.id(2)]].to_set, dep_useful.to_set)
-      assert_equal([[first.id(2), "baz", "qux"]].to_set, r.view.to_set)
-      assert_equal([[first.id(2), "baz", "qux"]].to_set, r.safe.to_set)
+                    [first.id(3), first.id(2)]].to_set, r.dep.to_set)
+      assert_equal([[first.id(2), "baz", "qux"]].to_set, r.get_view)
+      assert_equal([[first.id(2), "baz", "qux"]].to_set, r.get_safe)
     end
 
     # Writes:
@@ -221,7 +198,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     rlist.each do |r|
       assert_equal([[first.id(1), "foo", "bar"],
                     [first.id(4), "baz", "qux3"],
-                    [first.id(3), "baz", "qux2"]].to_set, r.view.to_set)
+                    [first.id(3), "baz", "qux2"]].to_set, r.get_view)
     end
 
     rlist.each(&:stop)
@@ -233,8 +210,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
   def check_convergence(rlist)
     first = rlist.first
     state = [:log, :safe, :safe_keys, :dom, :view, :dep, :safe_dep,
-             :seal_dep_id, :read_buf, :read_dep, :read_resp,
-             :log_chn_approx, :dep_chn_approx, :seal_dep_id_chn_approx]
+             :read_buf, :read_dep, :read_resp, :log_chn_approx]
     rlist.each do |r|
       next if r == first
 
@@ -249,7 +225,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
   def check_empty(rlist, *rels)
     rlist.each do |r|
       rels.each do |rel|
-        assert_equal([].to_set, r.tables[rel].to_set)
+        assert_equal([].to_set, r.tables[rel].to_set, "not empty: #{rel}")
       end
     end
   end
