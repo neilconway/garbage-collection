@@ -59,11 +59,11 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       assert_equal([[first.id(1), 'foo', 'bar'],
                     [last.id(6), 'qux', 'xxx'],
                     [last.id(7), 'baz', 'kkk4']].to_set,
-                   r.get_safe)
+                   r.safe.to_set)
       assert_equal([[first.id(1), 'foo', 'bar'],
                     [last.id(6), 'qux', 'xxx'],
                     [last.id(7), 'baz', 'kkk4']].to_set,
-                   r.get_view)
+                   r.view.to_set)
 
       # We expect 7 logical elements in safe, but we only need to store 2
       assert_equal(7, r.safe_keys.length)
@@ -98,9 +98,9 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     check_empty(rlist, :log, :dom, :dep, :safe_dep)
     rlist.each do |r|
       assert_equal([[first.id(9), "foo", "bar9"]].to_set,
-                   r.get_safe)
+                   r.safe.to_set)
       assert_equal([[first.id(9), "foo", "bar9"]].to_set,
-                   r.get_view)
+                   r.view.to_set)
 
       assert_equal(10, r.safe_keys.length)
       assert_equal(1, r.safe_keys.physical_size)
@@ -128,7 +128,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     rlist.each do |r|
       assert_equal([[first.id(1), "qux", "baz"],
                     [first.id(2), "foo", "bar"],
-                    [last.id(1), "foo", "baz"]].to_set, r.get_view)
+                    [last.id(1), "foo", "baz"]].to_set, r.view.to_set)
     end
 
     # Writes:
@@ -140,7 +140,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     check_empty(rlist, :log, :dom, :dep, :safe_dep)
     rlist.each do |r|
       assert_equal([[first.id(1), "qux", "baz"],
-                    [last.id(2), "foo", "baxxx"]].to_set, r.get_view)
+                    [last.id(2), "foo", "baxxx"]].to_set, r.view.to_set)
     end
 
     # Writes:
@@ -152,7 +152,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     check_empty(rlist, :log, :dom, :dep, :safe_dep)
     rlist.each do |r|
       assert_equal([[last.id(3), "qux", "baxxx"],
-                    [last.id(2), "foo", "baxxx"]].to_set, r.get_view)
+                    [last.id(2), "foo", "baxxx"]].to_set, r.view.to_set)
     end
 
     # XXX: Check that both values are returned from a read of a key with two
@@ -184,8 +184,8 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       assert_equal([[first.id(1), first.id(4)],
                     [first.id(3), first.id(1)],
                     [first.id(3), first.id(2)]].to_set, r.dep.to_set)
-      assert_equal([[first.id(2), "baz", "qux"]].to_set, r.get_view)
-      assert_equal([[first.id(2), "baz", "qux"]].to_set, r.get_safe)
+      assert_equal([[first.id(2), "baz", "qux"]].to_set, r.view.to_set)
+      assert_equal([[first.id(2), "baz", "qux"]].to_set, r.safe.to_set)
     end
 
     # Writes:
@@ -198,7 +198,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     rlist.each do |r|
       assert_equal([[first.id(1), "foo", "bar"],
                     [first.id(4), "baz", "qux3"],
-                    [first.id(3), "baz", "qux2"]].to_set, r.get_view)
+                    [first.id(3), "baz", "qux2"]].to_set, r.view.to_set)
     end
 
     rlist.each(&:stop)

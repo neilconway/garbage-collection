@@ -82,14 +82,6 @@ class CausalKvsReplica
     read_result <= resp_chn
   end
 
-  def get_safe
-    self.safe.map {|s| [s.id, s.key, s.val]}.to_set
-  end
-
-  def get_view
-    self.view.map {|v| [v.id, v.key, v.val]}.to_set
-  end
-
   def do_write(id, key, val, write_deps=[])
     self.log <+ [[id, key, val, write_deps]]
   end
@@ -109,5 +101,3 @@ class CausalKvsReplica
     puts "************"
   end
 end
-
-c = CausalKvsReplica.new(:print_state => true, :print_rules => true, :disable_rse_opt => true)
