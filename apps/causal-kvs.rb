@@ -13,7 +13,6 @@ class CausalKvsReplica
     table :log, [:id] => [:key, :val, :deps]
     table :safe, [:id] => [:key, :val]
     table :dep, [:id, :target]
-    range :seal_dep_id, [:id]
     range :safe_keys, [:id]
     table :safe_dep, [:target, :src_key]
     table :dom, [:id]
@@ -46,7 +45,6 @@ class CausalKvsReplica
 
   bloom :check_safe do
     dep <= log.flat_map {|l| l.deps.map {|d| [l.id, d]}}
-    seal_dep_id <= log {|l| [l.id]}
     pending <= log.notin(safe_keys, :id => :id)
     missing_dep <= dep.notin(safe_keys, :target => :id)
     safe <+ pending.notin(missing_dep, 0 => :id).pro {|p| [p.id, p.key, p.val]}
