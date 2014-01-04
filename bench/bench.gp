@@ -10,9 +10,10 @@ set output "fig/partition-bench.pdf"
 plot [*:200] "partition_data/partition_data.summary" using 1:2 title "" w lines
 
 set output "fig/update-gc-bench.pdf"
-set key bottom right  font ",14"
+set key top left  font ",14"
 set term pdfcairo dashed
 #set yrange [0:1200]
+set xrange [0:30]
 plot "no_partition_data/no_partition_10.data" using 1:2 title "10%" w lines, \
 	"no_partition_data/no_partition_30.data" using 1:2 title "30%" w lines lt 2, \
 	"no_partition_data/no_partition_50.data" using 1:2 title "50%" w lines lt 3, \
