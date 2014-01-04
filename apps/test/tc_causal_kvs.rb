@@ -53,8 +53,7 @@ class TestCausalKvs < MiniTest::Unit::TestCase
     15.times { all_nodes.each(&:tick); sleep 0.1 }
 
     check_convergence(rlist)
-    check_empty(rlist, :read_buf, :read_resp, :read_dep, :log,
-                :dom, :dep, :safe_dep)
+    check_empty(rlist, :read_buf, :read_resp, :log, :dom, :dep, :safe_dep)
     rlist.each do |r|
       assert_equal([[first.id(1), 'foo', 'bar'],
                     [last.id(6), 'qux', 'xxx'],
@@ -68,6 +67,9 @@ class TestCausalKvs < MiniTest::Unit::TestCase
       # We expect 7 logical elements in safe, but we only need to store 2
       assert_equal(7, r.safe_keys.length)
       assert_equal(2, r.safe_keys.physical_size)
+
+      assert_equal(7, r.seal_dep_id.length)
+      assert_equal(2, r.seal_dep_id.physical_size)
     end
 
     check_empty([c], :read_req)
@@ -104,6 +106,9 @@ class TestCausalKvs < MiniTest::Unit::TestCase
 
       assert_equal(10, r.safe_keys.length)
       assert_equal(1, r.safe_keys.physical_size)
+
+      assert_equal(10, r.seal_dep_id.length)
+      assert_equal(1, r.seal_dep_id.physical_size)
     end
 
     rlist.each(&:stop)
