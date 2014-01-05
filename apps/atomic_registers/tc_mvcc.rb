@@ -27,7 +27,8 @@ end
 class MultiReadWrite
   include Bud
   include AtomicBatchWrites
-  include MinimalCopy
+  include AtomicReads
+#  include MinimalCopy
   #include HWM
   #include ReadTabs
   #include AnotherApproach
@@ -111,7 +112,7 @@ class TestMVCCs < Minitest::Test
   def do_read(inst, id, name)
     @readid ||= 1000
     @readid += 1
-    inst.read <+ [[id, name]]
+    inst.read <+ [[id]]
     inst.tick
   end
 
@@ -147,10 +148,10 @@ class TestMVCCs < Minitest::Test
     multiread_common(m)
     # irrelevant entries GC'd
 
-    m.read_live.each{|l| puts "READ LIVE: #{l}"}
+    m.read_view.each{|l| puts "READ LIVE: #{l}"}
 
     #assert_equal([[300, 3, 3, "banquo", "dead but gets kings", 0], [300, 10, 100, "foo", "baz", 1], [300, 11, 100, "peter", "thane of cawdor", 2]], m.snapshot.to_a.sort, "irrelevant snapshot entries")
-    #assert_equal([[300, 3, 3, "banquo", "dead but gets kings", 0], [300, 10, 100, "foo", "baz", 1], [300, 11, 100, "peter", "thane of cawdor", 2]], m.read_live.to_a.sort, "irrelevant snapshot entries")
+    #assert_equal([[300, 3, 3, "banquo", "dead but gets kings", 0], [300, 10, 100, "foo", "baz", 1], [300, 11, 100, "peter", "thane of cawdor", 2]], m.read_view.to_a.sort, "irrelevant snapshot entries")
     m.read_commit <+ [[300]]
     2.times{m.tick}
     assert_equal([], m.snapshot.to_a)

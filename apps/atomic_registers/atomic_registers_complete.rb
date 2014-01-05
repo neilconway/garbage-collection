@@ -56,7 +56,7 @@ module AtomicReads
   include AtomicBatchWrites
 
   state do
-    table :read, [:batch, :name]
+    table :read, [:batch]
     range :read_commit, [:batch]
 
     table :snapshot, [:effective, :wid, :batch, :name, :val, :prev_wid]
@@ -69,7 +69,7 @@ module AtomicReads
   bloom do
     snapshot_exists <= snapshot {|r| [r.effective]}
     read_event <= read.notin(snapshot_exists, :batch => :batch)
-    snapshot <+ (read_event * live).pairs {|r,l| [r.batch] + l}
+    snapshot <+ (read_event * live).pairs {|r,l| r + l}
     read_view <= snapshot.notin(read_commit, :effective => :batch)
   end
 end
