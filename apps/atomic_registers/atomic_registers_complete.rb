@@ -45,7 +45,7 @@ module AtomicBatchWrites
   end
 
   bloom do
-    write_commit_event <= (write * commit).pairs(:batch => :batch){|w,s| w}.notin(write_log, 0 => :wid)
+    write_commit_event <= (write * commit).lefts(:batch => :batch).notin(write_log, 0 => :wid)
     write_log <+ (write_commit_event * live).outer(:name => :name){|e, l| e + [l.wid.nil? ? 0 : l.wid]}
     dom <= write_log {|l| [l.prev_wid]}
     live <= write_log.notin(dom, :wid => :wid)
@@ -63,7 +63,6 @@ module AtomicReads
     range :snapshot_exists, [:batch]
 
     scratch :read_event, read.schema
-    scratch :read_commit_event, read.schema
     scratch :read_view, snapshot.schema
   end
 
