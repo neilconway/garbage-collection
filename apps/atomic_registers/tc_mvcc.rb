@@ -2,7 +2,6 @@ require 'rubygems'
 gem 'minitest'
 require 'minitest/autorun'
 require './atomic_registers_complete'
-require './dev'
 
 def boots(cls)
   cls.write <+ [[1, 1, "foo", "bar"],
@@ -28,7 +27,6 @@ end
 class MultiReadWrite
   include Bud
   include AtomicBatchWrites
-  #include AtomicReads
   include MinimalCopy
   #include HWM
   #include ReadTabs
