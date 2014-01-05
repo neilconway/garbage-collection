@@ -69,7 +69,7 @@ module AtomicReads
   bloom do
     snapshot_exists <= snapshot{|r| [r.effective]}
     read_event <= read.notin(snapshot_exists, :batch => :batch)
-    snapshot <+ (read_event * live).pairs {|r,l| [r.batch] + l}
+    snapshot <+ (read_event * live).pairs {|r,l| r + l}
     read_view <= snapshot.notin(read_commit, :effective => :batch)
   end
 end
