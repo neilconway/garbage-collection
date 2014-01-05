@@ -9,7 +9,7 @@ plot [*:200] "no_saw_tooth/partition_data.summary" using 1:2 notitle w lines
 
 set output "fig/update-gc-bench.pdf"
 set term pdfcairo dashed
-set key top left title "Update Percentage"
+set key title "Update Percentage" at 13.4,1275
 #set yrange [0:1200]
 set xrange [0:30]
 plot "no_partition_data/no_partition_10.data" using 1:2 title "10%" w lines, \
