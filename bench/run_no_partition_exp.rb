@@ -1,4 +1,4 @@
-size = 1000
+size = 1500
 percents = (0..90).select {|i| i % 10 == 0}
 #percents = [0, 50, 90]
 data_files = {}
@@ -12,7 +12,7 @@ end
 
 percents.each do |p|
   puts "Running benchmark; percent = #{p}"
-  `ruby benchmark.rb #{size} #{p} no_partition_new >> #{log_file} 2>>#{data_files[p]}`
+  `ruby benchmark.rb #{size} #{p} no_partition >> #{log_file} 2>>#{data_files[p]}`
   raise "Error: #{$?}" unless $?.success?
   print "."
   print "\n"
