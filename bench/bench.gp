@@ -2,13 +2,14 @@ set terminal pdfcairo font "Helvetica,18" linewidth 4 rounded
 
 set ylabel "Number of Tuples"
 set xlabel "Time (s)"
-set key top left title "Update Percentage"
 
+unset key
 set output "fig/partition-bench.pdf"
-plot [*:200] "no_saw_tooth/partition_data.summary" using 1:2 title "" w lines
+plot [*:200] "no_saw_tooth/partition_data.summary" using 1:2 notitle w lines
 
 set output "fig/update-gc-bench.pdf"
 set term pdfcairo dashed
+set key top left title "Update Percentage"
 #set yrange [0:1200]
 set xrange [0:30]
 plot "no_partition_data/no_partition_10.data" using 1:2 title "10%" w lines, \
